@@ -22,7 +22,7 @@ int main(int argc, const char *argv[]) {
     torch::Device device(device_type);
 
 
-    Darknet net("models/yolov3.cfg", &device);
+    Darknet net("models/yolov3.cfg");
 
     auto &info = net.get_net_info();
     int input_image_size = std::atoi(info.at("height").c_str());

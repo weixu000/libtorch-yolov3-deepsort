@@ -70,15 +70,13 @@ struct DetectionLayer : torch::nn::Module {
 //                                   {static_cast<int64_t>(_anchors.size() / 2), 2});
     }
 
-    torch::Tensor forward(torch::Tensor prediction, int inp_dim, int num_classes, torch::Device device) {
+    torch::Tensor forward(torch::Tensor prediction, int inp_dim, int num_classes) {
         return anchor_transform(prediction, {inp_dim, inp_dim}, anchors, num_classes);
     }
 };
 
-Darknet::Darknet(const char *cfg_file, torch::Device *device) {
+Darknet::Darknet(const char *cfg_file) {
     blocks = load_cfg(cfg_file);
-
-    _device = device;
 
     create_modules();
 }
@@ -133,7 +131,7 @@ torch::Tensor Darknet::forward(torch::Tensor x) {
             int inp_dim = get_int_from_cfg(net_info, "height", 0);
             int num_classes = get_int_from_cfg(block, "classes", 0);
 
-            x = module_list[i]->forward(x, inp_dim, num_classes, *_device);
+            x = module_list[i]->forward(x, inp_dim, num_classes);
 
             if (!write) {
                 result = x;

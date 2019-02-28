@@ -13,7 +13,7 @@ Detection write_results(torch::Tensor prediction, float confidence, float nms_co
 
 struct Darknet : torch::nn::Module {
 public:
-    Darknet(const char *conf_file, torch::Device *device);
+    Darknet(const char *conf_file);
 
     const map<string, string> &get_net_info() {
         assert(blocks.size() > 0 && blocks[0]["type"] == "net");
@@ -25,8 +25,6 @@ public:
     torch::Tensor forward(torch::Tensor x);
 
 private:
-    torch::Device *_device;
-
     vector<map<string, string>> blocks;
 
     vector<torch::nn::Sequential> module_list;
