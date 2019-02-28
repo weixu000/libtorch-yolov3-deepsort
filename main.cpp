@@ -12,7 +12,7 @@ int main(int argc, const char *argv[]) {
     auto cmap = color_map(classes.size());
 
     if (argc != 2) {
-        std::cerr << "usage: yolo-app <image path>" << std::endl;
+        cerr << "usage: yolo-app <image path>" << endl;
         return -1;
     }
 
@@ -20,27 +20,24 @@ int main(int argc, const char *argv[]) {
 
     cv::VideoCapture cap(argv[1]);
     if (!cap.isOpened()) {
-        std::cerr << "Cannot open the video" << std::endl;
+        cerr << "Cannot open the video" << endl;
         return -2;
     }
 
     cv::namedWindow("out");
     cv::Mat origin_image;
 
-    std::cout << "start to inference ..." << endl;
-
     while (cap.read(origin_image)) {
-        auto start = std::chrono::high_resolution_clock::now();
+        auto start = high_resolution_clock::now();
         auto detections = detector.detect(origin_image);
-        auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "FPS: " << 1000 / duration_cast<milliseconds>(end - start).count() << endl;
+        auto end = high_resolution_clock::now();
 
         draw_detections(origin_image, detections, classes, cmap);
+        draw_text(origin_image, "FPS: " + to_string(1000 / duration_cast<milliseconds>(end - start).count()),
+                  cv::Scalar(255, 255, 255), cv::Point(origin_image.cols - 1, 0), true);
         cv::imshow("out", origin_image);
         if (cv::waitKey(1) != -1) break;
     }
-
-    std::cout << "Done" << endl;
 
     return 0;
 }

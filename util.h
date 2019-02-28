@@ -56,7 +56,7 @@ inline void draw_text(cv::Mat &img, const std::string &str,
     }
 
     cv::rectangle(img, bottom_left, upper_right, color, -1);
-    cv::putText(img, str, bottom_left, cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255, 255) - color);
+    cv::putText(img, str, bottom_left, cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255) - color);
 }
 
 template<typename TLabelFn, typename TColorFn>
