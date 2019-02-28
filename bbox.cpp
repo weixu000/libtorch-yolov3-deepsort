@@ -83,9 +83,9 @@ DetectionList threshold_confidence(torch::Tensor pred, float threshold) {
     DetectionList out;
     for (int64_t i = 0; i < pred.size(0); ++i) {
         auto index = prob_thresh[i].nonzero().squeeze_();
-        out.emplace_back(pred[i].index_select(0, index).cpu(),
-                         max_cls[i].index_select(0, index).cpu(),
-                         max_cls_score[i].index_select(0, index).cpu());
+        out.emplace_back(pred[i].index_select(0, index),
+                         max_cls[i].index_select(0, index),
+                         max_cls_score[i].index_select(0, index));
     }
     return out;
 }

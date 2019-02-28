@@ -33,7 +33,11 @@ Detection Detector::detect(cv::Mat origin_image) {
     auto prediction = net.forward(img_var);
 
     auto out = threshold_confidence(prediction, 0.1)[0];
-    auto &bbox = std::get<0>(out);
+    auto &[bbox, cls, scr] = out;
+    bbox = bbox.cpu();
+    cls = cls.cpu();
+    scr = scr.cpu();
+
     center_to_corner(bbox);
     NMS(out, 0.4);
 
