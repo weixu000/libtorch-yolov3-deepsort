@@ -70,8 +70,8 @@ struct DetectionLayer : torch::nn::Module {
 //                                   {static_cast<int64_t>(_anchors.size() / 2), 2});
     }
 
-    torch::Tensor forward(torch::Tensor prediction, int inp_dim, int num_classes) {
-        return anchor_transform(prediction, {inp_dim, inp_dim}, anchors, num_classes);
+    torch::Tensor forward(torch::Tensor prediction, torch::IntList inp_dim, int num_classes) {
+        return anchor_transform(prediction, inp_dim, anchors, num_classes);
     }
 };
 
@@ -86,6 +86,7 @@ void Darknet::load_weights(const char *weight_file) {
 }
 
 torch::Tensor Darknet::forward(torch::Tensor x) {
+    auto inp_dim = x.sizes().slice(2);
     auto module_count = module_list.size();
 
     std::vector<torch::Tensor> outputs(module_count);
@@ -128,7 +129,6 @@ torch::Tensor Darknet::forward(torch::Tensor x) {
             outputs[i] = x;
         } else if (layer_type == "yolo") {
             auto net_info = blocks[0];
-            int inp_dim = get_int_from_cfg(net_info, "height", 0);
             int num_classes = get_int_from_cfg(block, "classes", 0);
 
             x = module_list[i]->forward(x, inp_dim, num_classes);
