@@ -1,5 +1,5 @@
-#ifndef YOLO_APP_BBOX_H
-#define YOLO_APP_BBOX_H
+#ifndef BBOX_H
+#define BBOX_H
 
 #include <torch/torch.h>
 
@@ -19,4 +19,4 @@ DetectionList threshold_confidence(torch::Tensor pred, float threshold);
 
 void NMS(Detection &batch, float threshold);
 
-#endif //YOLO_APP_BBOX_H
+#endif //BBOX_H

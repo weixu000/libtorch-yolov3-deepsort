@@ -1,9 +1,5 @@
-//
-// Created by wei-x15 on 2/27/19.
-//
-
-#ifndef YOLO_APP_DARKNET_PARSING_H
-#define YOLO_APP_DARKNET_PARSING_H
+#ifndef DARKNET_PARSING_H
+#define DARKNET_PARSING_H
 
 #include <string>
 #include <map>
@@ -24,4 +20,4 @@ torch::nn::Conv2dOptions conv_options(int64_t in_planes, int64_t out_planes, int
 
 torch::nn::BatchNormOptions bn_options(int64_t features);
 
-#endif //YOLO_APP_DARKNET_PARSING_H
+#endif //DARKNET_PARSING_H

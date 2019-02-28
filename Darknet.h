@@ -1,12 +1,5 @@
-/*******************************************************************************
-* 
-* Author : walktree
-* Email  : walktree@gmail.com
-*
-* A Libtorch implementation of the YOLO v3 object detection algorithm, written with pure C++. 
-* It's fast, easy to be integrated to your production, and supports CPU and GPU computation. Enjoy ~
-*
-*******************************************************************************/
+#ifndef DARKNET_H
+#define DARKNET_H
 
 #include <torch/torch.h>
 #include <string>
@@ -43,3 +36,5 @@ private:
 
     void create_modules();
 };
+
+#endif //DARKNET_H
