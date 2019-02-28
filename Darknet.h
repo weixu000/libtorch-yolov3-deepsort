@@ -15,7 +15,10 @@ struct Darknet : torch::nn::Module {
 public:
     Darknet(const char *conf_file, torch::Device *device);
 
-    map<string, string> *get_net_info();
+    const map<string, string> &get_net_info() {
+        assert(blocks.size() > 0 && blocks[0]["type"] == "net");
+        return blocks[0];
+    }
 
     void load_weights(const char *weight_file);
 

@@ -1,12 +1,3 @@
-/*******************************************************************************
-* 
-* Author : walktree
-* Email  : walktree@gmail.com
-*
-* A Libtorch implementation of the YOLO v3 object detection algorithm, written with pure C++. 
-* It's fast, easy to be integrated to your production, and supports CPU and GPU computation. Enjoy ~
-*
-*******************************************************************************/
 #include "Darknet.h"
 #include "darknet_parsing.h"
 
@@ -92,98 +83,8 @@ Darknet::Darknet(const char *cfg_file, torch::Device *device) {
     create_modules();
 }
 
-map<string, string> *Darknet::get_net_info() {
-    if (blocks.size() > 0) {
-        return &blocks[0];
-    }
-}
-
 void Darknet::load_weights(const char *weight_file) {
-    ifstream fs(weight_file, ios_base::binary);
-
-    // header info: 5 * int32_t
-    int32_t header_size = sizeof(int32_t) * 5;
-
-    int64_t index_weight = 0;
-
-    fs.seekg(0, fs.end);
-    int64_t length = fs.tellg();
-    // skip header
-    length = length - header_size;
-
-    fs.seekg(header_size, fs.beg);
-    float *weights_src = (float *) malloc(length);
-    fs.read(reinterpret_cast<char *>(weights_src), length);
-
-    fs.close();
-
-    at::TensorOptions options = at::TensorOptions()
-            .dtype(torch::kFloat32)
-            .is_variable(true);
-    at::Tensor weights = at::CPU(torch::kFloat32).tensorFromBlob(weights_src, {length / 4});
-
-    for (int i = 0; i < module_list.size(); i++) {
-        map<string, string> module_info = blocks[i + 1];
-
-        string module_type = module_info["type"];
-
-        // only conv layer need to load weight
-        if (module_type != "convolutional") continue;
-
-        torch::nn::Sequential seq_module = module_list[i];
-
-        auto conv_module = seq_module.ptr()->ptr(0);
-        torch::nn::Conv2dImpl *conv_imp = dynamic_cast<torch::nn::Conv2dImpl *>(conv_module.get());
-
-        int batch_normalize = get_int_from_cfg(module_info, "batch_normalize", 0);
-
-        if (batch_normalize > 0) {
-            // second module
-            auto bn_module = seq_module.ptr()->ptr(1);
-
-            torch::nn::BatchNormImpl *bn_imp = dynamic_cast<torch::nn::BatchNormImpl *>(bn_module.get());
-
-            int num_bn_biases = bn_imp->bias.numel();
-
-            at::Tensor bn_bias = weights.slice(0, index_weight, index_weight + num_bn_biases);
-            index_weight += num_bn_biases;
-
-            at::Tensor bn_weights = weights.slice(0, index_weight, index_weight + num_bn_biases);
-            index_weight += num_bn_biases;
-
-            at::Tensor bn_running_mean = weights.slice(0, index_weight, index_weight + num_bn_biases);
-            index_weight += num_bn_biases;
-
-            at::Tensor bn_running_var = weights.slice(0, index_weight, index_weight + num_bn_biases);
-            index_weight += num_bn_biases;
-
-            bn_bias = bn_bias.view_as(bn_imp->bias);
-            bn_weights = bn_weights.view_as(bn_imp->weight);
-            bn_running_mean = bn_running_mean.view_as(bn_imp->running_mean);
-            bn_running_var = bn_running_var.view_as(bn_imp->running_variance);
-
-            bn_imp->bias.set_data(bn_bias);
-            bn_imp->weight.set_data(bn_weights);
-            bn_imp->running_mean.set_data(bn_running_mean);
-            bn_imp->running_variance.set_data(bn_running_var);
-        } else {
-            int num_conv_biases = conv_imp->bias.numel();
-
-            at::Tensor conv_bias = weights.slice(0, index_weight, index_weight + num_conv_biases);
-            index_weight += num_conv_biases;
-
-            conv_bias = conv_bias.view_as(conv_imp->bias);
-            conv_imp->bias.set_data(conv_bias);
-        }
-
-        int num_weights = conv_imp->weight.numel();
-
-        at::Tensor conv_weights = weights.slice(0, index_weight, index_weight + num_weights);
-        index_weight += num_weights;
-
-        conv_weights = conv_weights.view_as(conv_imp->weight);
-        conv_imp->weight.set_data(conv_weights);
-    }
+    ::load_weights(weight_file, blocks, module_list);
 }
 
 torch::Tensor Darknet::forward(torch::Tensor x) {
@@ -260,12 +161,8 @@ void Darknet::create_modules() {
 
     int filters = 0;
 
-    for (int i = 0, len = blocks.size(); i < len; i++) {
-        map<string, string> block = blocks[i];
-
-        string layer_type = block["type"];
-
-        // std::cout << index << "--" << layer_type << endl;
+    for (auto &block:blocks) {
+        auto layer_type = block["type"];
 
         torch::nn::Sequential module;
 
@@ -311,8 +208,6 @@ void Darknet::create_modules() {
             int from = get_int_from_cfg(block, "from", 0);
             block["from"] = to_string(from);
 
-            blocks[i] = block;
-
             // placeholder
             EmptyLayer layer;
             module->push_back(layer);
@@ -337,8 +232,6 @@ void Darknet::create_modules() {
 
             block["start"] = to_string(start);
             block["end"] = to_string(end);
-
-            blocks[i] = block;
 
             // placeholder
             EmptyLayer layer;

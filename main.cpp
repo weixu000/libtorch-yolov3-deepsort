@@ -24,8 +24,8 @@ int main(int argc, const char *argv[]) {
 
     Darknet net("models/yolov3.cfg", &device);
 
-    map<string, string> *info = net.get_net_info();
-    int input_image_size = std::atoi(info->operator[]("height").c_str());
+    auto &info = net.get_net_info();
+    int input_image_size = std::atoi(info.at("height").c_str());
 
     std::cout << "loading weight ..." << endl;
     net.load_weights("weights/yolov3.weights");

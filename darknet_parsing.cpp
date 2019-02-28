@@ -1,7 +1,3 @@
-//
-// Created by wei-x15 on 2/27/19.
-//
-
 #include "darknet_parsing.h"
 
 using std::string;
@@ -96,11 +92,11 @@ torch::nn::BatchNormOptions bn_options(int64_t features) {
     return bn_options;
 }
 
-std::vector<std::map<string, string>> load_cfg(const string &cfg_file) {
+Blocks load_cfg(const string &cfg_file) {
     std::ifstream fs(cfg_file);
     string line;
 
-    std::vector<std::map<string, string>> blocks;
+    Blocks blocks;
 
     if (!fs) {
         throw "Fail to load cfg file";
@@ -137,5 +133,89 @@ std::vector<std::map<string, string>> load_cfg(const string &cfg_file) {
     fs.close();
 
     return blocks;
+}
+
+void load_weights(const string &weight_file, const Blocks &blocks, std::vector<torch::nn::Sequential> &module_list) {
+    std::ifstream fs(weight_file, std::ios_base::binary);
+
+    // header info: 5 * int32_t
+    auto header_size = sizeof(int32_t) * 5;
+
+    int64_t index_weight = 0;
+
+    fs.seekg(0, std::ifstream::end);
+    int64_t length = fs.tellg();
+    // skip header
+    length = length - header_size;
+
+    fs.seekg(header_size, std::ifstream::beg);
+    auto *weights_src = (float *) malloc(static_cast<size_t>(length));
+    fs.read(reinterpret_cast<char *>(weights_src), length);
+
+    fs.close();
+
+    at::Tensor weights = at::CPU(torch::kFloat32).tensorFromBlob(weights_src, {length / 4});
+
+    for (int i = 0; i < module_list.size(); i++) {
+        auto &module_info = blocks[i + 1];
+        string module_type = module_info.at("type");
+
+        // only conv layer need to load weight
+        if (module_type != "convolutional") continue;
+
+        torch::nn::Sequential seq_module = module_list[i];
+
+        auto conv_module = seq_module.ptr()->ptr(0);
+        auto *conv_imp = dynamic_cast<torch::nn::Conv2dImpl *>(conv_module.get());
+
+        int batch_normalize = get_int_from_cfg(module_info, "batch_normalize", 0);
+
+        if (batch_normalize > 0) {
+            // second module
+            auto bn_module = seq_module.ptr()->ptr(1);
+
+            auto *bn_imp = dynamic_cast<torch::nn::BatchNormImpl *>(bn_module.get());
+
+            auto num_bn_biases = bn_imp->bias.numel();
+
+            at::Tensor bn_bias = weights.slice(0, index_weight, index_weight + num_bn_biases);
+            index_weight += num_bn_biases;
+
+            at::Tensor bn_weights = weights.slice(0, index_weight, index_weight + num_bn_biases);
+            index_weight += num_bn_biases;
+
+            at::Tensor bn_running_mean = weights.slice(0, index_weight, index_weight + num_bn_biases);
+            index_weight += num_bn_biases;
+
+            at::Tensor bn_running_var = weights.slice(0, index_weight, index_weight + num_bn_biases);
+            index_weight += num_bn_biases;
+
+            bn_bias = bn_bias.view_as(bn_imp->bias);
+            bn_weights = bn_weights.view_as(bn_imp->weight);
+            bn_running_mean = bn_running_mean.view_as(bn_imp->running_mean);
+            bn_running_var = bn_running_var.view_as(bn_imp->running_variance);
+
+            bn_imp->bias.set_data(bn_bias);
+            bn_imp->weight.set_data(bn_weights);
+            bn_imp->running_mean.set_data(bn_running_mean);
+            bn_imp->running_variance.set_data(bn_running_var);
+        } else {
+            auto num_conv_biases = conv_imp->bias.numel();
+
+            at::Tensor conv_bias = weights.slice(0, index_weight, index_weight + num_conv_biases);
+            index_weight += num_conv_biases;
+
+            conv_bias = conv_bias.view_as(conv_imp->bias);
+            conv_imp->bias.set_data(conv_bias);
+        }
+
+        auto num_weights = conv_imp->weight.numel();
+
+        at::Tensor conv_weights = weights.slice(0, index_weight, index_weight + num_weights);
+        index_weight += num_weights;
+
+        conv_weights = conv_weights.view_as(conv_imp->weight);
+        conv_imp->weight.set_data(conv_weights);
+    }
 }
 
