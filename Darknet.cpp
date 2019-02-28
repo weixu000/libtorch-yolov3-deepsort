@@ -1,11 +1,10 @@
 #include "Darknet.h"
 #include "darknet_parsing.h"
 
+using namespace std;
 
 struct EmptyLayer : torch::nn::Module {
-    EmptyLayer() {
-
-    }
+    EmptyLayer() = default;
 
     torch::Tensor forward(torch::Tensor x) {
         return x;
@@ -15,7 +14,7 @@ struct EmptyLayer : torch::nn::Module {
 struct UpsampleLayer : torch::nn::Module {
     int _stride;
 
-    UpsampleLayer(int stride) {
+    explicit UpsampleLayer(int stride) {
         _stride = stride;
     }
 
@@ -64,7 +63,7 @@ struct MaxPoolLayer2D : torch::nn::Module {
 struct DetectionLayer : torch::nn::Module {
     vector<float> anchors;
 
-    DetectionLayer(vector<float> _anchors) {
+    explicit DetectionLayer(std::vector<float> _anchors) {
         anchors = _anchors;
 //        anchors = torch::from_blob(_anchors.data(),
 //                                   {static_cast<int64_t>(_anchors.size() / 2), 2});
@@ -75,13 +74,13 @@ struct DetectionLayer : torch::nn::Module {
     }
 };
 
-Darknet::Darknet(const char *cfg_file) {
+Darknet::Darknet(const string &cfg_file) {
     blocks = load_cfg(cfg_file);
 
     create_modules();
 }
 
-void Darknet::load_weights(const char *weight_file) {
+void Darknet::load_weights(const string &weight_file) {
     ::load_weights(weight_file, blocks, module_list);
 }
 
@@ -172,7 +171,7 @@ void Darknet::create_modules() {
             int stride = get_int_from_cfg(block, "stride", 1);
 
             int pad = padding > 0 ? (kernel_size - 1) / 2 : 0;
-            bool with_bias = batch_normalize > 0 ? false : true;
+            bool with_bias = batch_normalize <= 0;
 
             torch::nn::Conv2d conv = torch::nn::Conv2d(
                     conv_options(prev_filters, filters, kernel_size, stride, pad, 1, with_bias));
@@ -246,11 +245,9 @@ void Darknet::create_modules() {
             split(anchor_info, anchors, ",");
 
             vector<float> anchor_points;
-            int pos;
-            for (int i = 0; i < masks.size(); i++) {
-                pos = masks[i];
-                anchor_points.push_back(anchors[pos * 2]);
-                anchor_points.push_back(anchors[pos * 2 + 1]);
+            for (auto mask : masks) {
+                anchor_points.push_back(anchors[mask * 2]);
+                anchor_points.push_back(anchors[mask * 2 + 1]);
             }
 
             DetectionLayer layer(anchor_points);
@@ -271,12 +268,4 @@ void Darknet::create_modules() {
 
         index += 1;
     }
-}
-
-Detection write_results(torch::Tensor prediction, float confidence, float nms_conf) {
-    auto out = threshold_confidence(prediction, confidence)[0];
-    center_to_corner(std::get<0>(out));
-    NMS(out, nms_conf);
-
-    return out;
 }

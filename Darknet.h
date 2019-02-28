@@ -7,27 +7,24 @@
 #include <map>
 #include "bbox.h"
 
-using namespace std;
-
-Detection write_results(torch::Tensor prediction, float confidence, float nms_conf);
 
 struct Darknet : torch::nn::Module {
 public:
-    Darknet(const char *conf_file);
+    explicit Darknet(const string &cfg_file);
 
-    const map<string, string> &get_net_info() {
-        assert(blocks.size() > 0 && blocks[0]["type"] == "net");
+    const std::map<std::string, std::string> &get_net_info() {
+        assert(!blocks.empty() && blocks[0]["type"] == "net");
         return blocks[0];
     }
 
-    void load_weights(const char *weight_file);
+    void load_weights(const std::string &weight_file);
 
     torch::Tensor forward(torch::Tensor x);
 
 private:
-    vector<map<string, string>> blocks;
+    std::vector<std::map<std::string, std::string>> blocks;
 
-    vector<torch::nn::Sequential> module_list;
+    std::vector<torch::nn::Sequential> module_list;
 
     void create_modules();
 };
