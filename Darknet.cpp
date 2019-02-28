@@ -88,25 +88,23 @@ void Darknet::load_weights(const char *weight_file) {
 }
 
 torch::Tensor Darknet::forward(torch::Tensor x) {
-    int module_count = module_list.size();
+    auto module_count = module_list.size();
 
     std::vector<torch::Tensor> outputs(module_count);
 
     torch::Tensor result;
-    int write = 0;
+    auto write = false;
 
     for (int i = 0; i < module_count; i++) {
-        map<string, string> block = blocks[i + 1];
+        auto block = blocks[i + 1];
 
-        string layer_type = block["type"];
+        auto layer_type = block["type"];
 
         if (layer_type == "net")
             continue;
 
         if (layer_type == "convolutional" || layer_type == "upsample" || layer_type == "maxpool") {
-            torch::nn::SequentialImpl *seq_imp = dynamic_cast<torch::nn::SequentialImpl *>(module_list[i].ptr().get());
-
-            x = seq_imp->forward(x);
+            x = module_list[i]->forward(x);
             outputs[i] = x;
         } else if (layer_type == "route") {
             int start = std::stoi(block["start"]);
@@ -131,17 +129,15 @@ torch::Tensor Darknet::forward(torch::Tensor x) {
             x = outputs[i - 1] + outputs[i + from];
             outputs[i] = x;
         } else if (layer_type == "yolo") {
-            torch::nn::SequentialImpl *seq_imp = dynamic_cast<torch::nn::SequentialImpl *>(module_list[i].ptr().get());
-
-            map<string, string> net_info = blocks[0];
+            auto net_info = blocks[0];
             int inp_dim = get_int_from_cfg(net_info, "height", 0);
             int num_classes = get_int_from_cfg(block, "classes", 0);
 
-            x = seq_imp->forward(x, inp_dim, num_classes, *_device);
+            x = module_list[i]->forward(x, inp_dim, num_classes, *_device);
 
-            if (write == 0) {
+            if (!write) {
                 result = x;
-                write = 1;
+                write = true;
             } else {
                 result = torch::cat({result, x}, 1);
             }
