@@ -12,9 +12,7 @@ using namespace std;
 Detection write_results(torch::Tensor prediction, float confidence, float nms_conf);
 
 struct Darknet : torch::nn::Module {
-
 public:
-
     Darknet(const char *conf_file, torch::Device *device);
 
     map<string, string> *get_net_info();
@@ -24,15 +22,11 @@ public:
     torch::Tensor forward(torch::Tensor x);
 
 private:
-
     torch::Device *_device;
 
     vector<map<string, string>> blocks;
 
     vector<torch::nn::Sequential> module_list;
-
-    // load YOLOv3
-    void load_cfg(const char *cfg_file);
 
     void create_modules();
 };

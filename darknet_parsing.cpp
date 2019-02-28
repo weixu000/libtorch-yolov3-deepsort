@@ -96,3 +96,46 @@ torch::nn::BatchNormOptions bn_options(int64_t features) {
     return bn_options;
 }
 
+std::vector<std::map<string, string>> load_cfg(const string &cfg_file) {
+    std::ifstream fs(cfg_file);
+    string line;
+
+    std::vector<std::map<string, string>> blocks;
+
+    if (!fs) {
+        throw "Fail to load cfg file";
+    }
+
+    while (getline(fs, line)) {
+        trim(line);
+
+        if (line.empty()) {
+            continue;
+        }
+
+        if (line.substr(0, 1) == "[") {
+            map<string, string> block;
+
+            string key = line.substr(1, line.length() - 2);
+            block["type"] = key;
+
+            blocks.push_back(block);
+        } else {
+            auto &block = blocks.back();
+
+            vector<string> op_info;
+
+            split(line, op_info, "=");
+
+            if (op_info.size() == 2) {
+                string p_key = op_info[0];
+                string p_value = op_info[1];
+                block[p_key] = p_value;
+            }
+        }
+    }
+    fs.close();
+
+    return blocks;
+}
+

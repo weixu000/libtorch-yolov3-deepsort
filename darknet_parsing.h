@@ -20,4 +20,6 @@ torch::nn::Conv2dOptions conv_options(int64_t in_planes, int64_t out_planes, int
 
 torch::nn::BatchNormOptions bn_options(int64_t features);
 
+std::vector<std::map<string, string>> load_cfg(const string &cfg_file);
+
 #endif //DARKNET_PARSING_H
