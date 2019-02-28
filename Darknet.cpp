@@ -260,11 +260,7 @@ void Darknet::create_modules() {
         output_filters.push_back(filters);
         module_list.push_back(module);
 
-        char *module_key = new char[strlen("layer_") + sizeof(index) + 1];
-
-        sprintf(module_key, "%s%d", "layer_", index);
-
-        register_module(module_key, module);
+        register_module("layer_" + to_string(index), module);
 
         index += 1;
     }
