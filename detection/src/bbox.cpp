@@ -62,7 +62,7 @@ void NMS(std::vector<Detection> &dets, float threshold) {
               [](const Detection &a, const Detection &b) { return a.scr > b.scr; });
 
     for (size_t i = 0; i < dets.size(); ++i) {
-        dets.erase(std::remove_if(dets.begin() + i, dets.end(),
+        dets.erase(std::remove_if(dets.begin() + i + 1, dets.end(),
                                   [&](const Detection &d) {
                                       return iou(dets[i].bbox, d.bbox) > 1 - threshold;
                                   }),

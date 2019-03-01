@@ -34,10 +34,6 @@ int main(int argc, const char *argv[]) {
         auto tracks = tracker.update(dets);
         auto end = high_resolution_clock::now();
 
-        for (auto &d:dets) {
-            cv::rectangle(origin_image, d, {0, 255, 0});
-        }
-
         for (auto &t:tracks) {
             cv::rectangle(origin_image, t.box, {0, 0, 255});
             draw_text(origin_image, to_string(t.id), {0, 0, 255}, t.box.tl());
@@ -46,7 +42,13 @@ int main(int argc, const char *argv[]) {
         draw_text(origin_image, "FPS: " + to_string(1000 / duration_cast<milliseconds>(end - start).count()),
                   {255, 255, 255}, cv::Point(origin_image.cols - 1, 0), true);
         cv::imshow("out", origin_image);
-        if (cv::waitKey(1) != -1) break;
+
+        auto c = char(cv::waitKey(1));
+        if (c == ' ') {
+            cv::waitKey(0);
+        } else if (c == 'q') {
+            break;
+        }
     }
 
     return 0;
