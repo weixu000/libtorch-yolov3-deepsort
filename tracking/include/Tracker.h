@@ -14,9 +14,9 @@ public:
     std::vector<Track> update(const std::vector<cv::Rect2f> &dets);
 
 private:
-    const int max_age = 10;
-    const int min_hits = 3;
-    const float iou_threshold = 0.3;
+    static const int max_age;
+    static const int min_hits;
+    static const float iou_threshold;
 
     std::vector<KalmanTracker> trackers;
 
