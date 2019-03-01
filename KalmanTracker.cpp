@@ -3,7 +3,8 @@
 using namespace cv;
 
 // Convert bounding box from [cx,cy,s,r] to [x,y,w,h] style.
-static inline StateType get_rect_xysr(float cx, float cy, float s, float r) {
+static inline StateType get_rect_xysr(const Mat &xysr) {
+    auto cx = xysr.at<float>(0, 0), cy = xysr.at<float>(1, 0), s = xysr.at<float>(2, 0), r = xysr.at<float>(3, 0);
     float w = sqrt(s * r);
     float h = s / w;
     float x = (cx - w / 2);
@@ -50,25 +51,24 @@ KalmanTracker::KalmanTracker(StateType initRect) {
 
 // Predict the estimated bounding box.
 StateType KalmanTracker::predict() {
-    Mat p = kf.predict();
-    m_age += 1;
+    ++age;
 
-    if (m_time_since_update > 0)
-        m_hit_streak = 0;
-    m_time_since_update += 1;
+    if (time_since_update > 0)
+        hit_streak = 0;
+    ++time_since_update;
 
-    StateType predictBox = get_rect_xysr(p.at<float>(0, 0), p.at<float>(1, 0), p.at<float>(2, 0), p.at<float>(3, 0));
+    StateType predictBox = get_rect_xysr(kf.predict());
+    history.push_back(predictBox);
 
-    m_history.push_back(predictBox);
-    return m_history.back();
+    return predictBox;
 }
 
 // Update the state vector with observed bounding box.
 void KalmanTracker::update(StateType stateMat) {
-    m_time_since_update = 0;
-    m_history.clear();
-    m_hits += 1;
-    m_hit_streak += 1;
+    time_since_update = 0;
+    history.clear();
+    ++hits;
+    ++hit_streak;
 
     // measurement
     measurement.at<float>(0, 0) = stateMat.x + stateMat.width / 2;
@@ -82,6 +82,5 @@ void KalmanTracker::update(StateType stateMat) {
 
 // Return the current state vector
 StateType KalmanTracker::get_state() const {
-    Mat s = kf.statePost;
-    return get_rect_xysr(s.at<float>(0, 0), s.at<float>(1, 0), s.at<float>(2, 0), s.at<float>(3, 0));
+    return get_rect_xysr(kf.statePost);
 }

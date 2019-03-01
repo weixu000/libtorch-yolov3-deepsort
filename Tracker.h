@@ -16,7 +16,7 @@ public:
 private:
     const int max_age = 10;
     const int min_hits = 3;
-    const float iouThreshold = 0.3;
+    const float iou_threshold = 0.3;
 
     std::vector<KalmanTracker> trackers;
 
