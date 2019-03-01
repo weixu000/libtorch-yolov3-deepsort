@@ -29,11 +29,8 @@ Tensor iou(Tensor box1, Tensor box2) {
 
 torch::Tensor anchor_transform(torch::Tensor prediction,
                                torch::IntList inp_dim,
-                               std::vector<float> _anchors,
+                               torch::Tensor anchors,
                                int num_classes) {
-    auto anchors = torch::from_blob(_anchors.data(),
-                                    {static_cast<int64_t>(_anchors.size() / 2), 2}).to(prediction.device());
-
     auto batch_size = prediction.size(0);
     auto grid_size = prediction.sizes().slice(2);
     int64_t stride[] = {inp_dim[0] / grid_size[0], inp_dim[1] / grid_size[1]};

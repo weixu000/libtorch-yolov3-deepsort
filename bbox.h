@@ -7,7 +7,7 @@ torch::Tensor iou(torch::Tensor box1, torch::Tensor box2);
 
 torch::Tensor anchor_transform(torch::Tensor prediction,
                                torch::IntList inp_dim,
-                               std::vector<float> anchors,
+                               torch::Tensor anchors,
                                int num_classes);
 
 using Detection = std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>;

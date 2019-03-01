@@ -47,12 +47,12 @@ struct MaxPoolLayer2D : torch::nn::Module {
 };
 
 struct DetectionLayer : torch::nn::Module {
-    vector<float> anchors;
+    torch::Tensor anchors;
 
-    explicit DetectionLayer(std::vector<float> _anchors) {
-        anchors = _anchors;
-//        anchors = torch::from_blob(_anchors.data(),
-//                                   {static_cast<int64_t>(_anchors.size() / 2), 2});
+    explicit DetectionLayer(const ::std::vector<float> &_anchors) {
+        anchors = register_buffer("anchors",
+                                  torch::from_blob((void *) _anchors.data(),
+                                                   {static_cast<int64_t>(_anchors.size() / 2), 2}).clone());
     }
 
     torch::Tensor forward(torch::Tensor prediction, torch::IntList inp_dim, int num_classes) {
