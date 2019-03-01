@@ -48,15 +48,29 @@ struct MaxPoolLayer2D : torch::nn::Module {
 
 struct DetectionLayer : torch::nn::Module {
     torch::Tensor anchors;
+    std::array<torch::Tensor, 2> grid;
 
-    explicit DetectionLayer(const ::std::vector<float> &_anchors) {
-        anchors = register_buffer("anchors",
-                                  torch::from_blob((void *) _anchors.data(),
-                                                   {static_cast<int64_t>(_anchors.size() / 2), 2}).clone());
-    }
+    explicit DetectionLayer(const ::std::vector<float> &_anchors)
+            : anchors(register_buffer("anchors",
+                                      torch::from_blob((void *) _anchors.data(),
+                                                       {static_cast<int64_t>(_anchors.size() / 2), 2}).clone())),
+              grid{torch::empty({0}), torch::empty({0})} {}
 
     torch::Tensor forward(torch::Tensor prediction, torch::IntList inp_dim, int num_classes) {
-        return anchor_transform(prediction, inp_dim, anchors, num_classes);
+        auto grid_size = prediction.sizes().slice(2);
+        if (grid_size[0] != grid[0].size(0) || grid_size[1] != grid[1].size(0)) {
+            // update grid if size not match
+            grid = {torch::arange(grid_size[0], prediction.options()),
+                    torch::arange(grid_size[1], prediction.options())};
+        }
+
+        auto batch_size = prediction.size(0);
+        auto stride = {inp_dim[0] / grid_size[0], inp_dim[1] / grid_size[1]};
+        auto bbox_attrs = 5 + num_classes;
+        auto num_anchors = anchors.size(0);
+        prediction = prediction.view({batch_size, num_anchors, bbox_attrs, grid_size[0], grid_size[1]});
+
+        return anchor_transform(prediction, anchors, grid, stride);
     }
 };
 

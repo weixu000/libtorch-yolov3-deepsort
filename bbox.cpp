@@ -28,17 +28,9 @@ Tensor iou(Tensor box1, Tensor box2) {
 }
 
 torch::Tensor anchor_transform(torch::Tensor prediction,
-                               torch::IntList inp_dim,
                                torch::Tensor anchors,
-                               int num_classes) {
-    auto batch_size = prediction.size(0);
-    auto grid_size = prediction.sizes().slice(2);
-    int64_t stride[] = {inp_dim[0] / grid_size[0], inp_dim[1] / grid_size[1]};
-    auto bbox_attrs = 5 + num_classes;
-    auto num_anchors = anchors.size(0);
-
-    prediction = prediction.view({batch_size, num_anchors, bbox_attrs, grid_size[0], grid_size[1]});
-
+                               torch::TensorList grid,
+                               torch::IntList stride) {
     // sigmoid object confidence
     prediction.select(2, 4).sigmoid_();
 
@@ -46,18 +38,14 @@ torch::Tensor anchor_transform(torch::Tensor prediction,
     prediction.slice(2, 5) = prediction.slice(2, 5).softmax(-1);
 
     // sigmoid the centre_X, centre_Y
-    auto grid = torch::arange(grid_size[1],
-                              torch::dtype(prediction.dtype()).device(prediction.device()));
-    prediction.select(2, 0).sigmoid_().add_(grid.view({1, 1, 1, -1})).mul_(stride[1]);
-    grid = torch::arange(grid_size[0],
-                         torch::dtype(prediction.dtype()).device(prediction.device()));
-    prediction.select(2, 1).sigmoid_().add_(grid.view({1, 1, -1, 1})).mul_(stride[0]);
+    prediction.select(2, 0).sigmoid_().add_(grid[1].view({1, 1, 1, -1})).mul_(stride[1]);
+    prediction.select(2, 1).sigmoid_().add_(grid[0].view({1, 1, -1, 1})).mul_(stride[0]);
 
     // log space transform height and the width
     prediction.select(2, 2).exp_().mul_(anchors.select(1, 0).view({1, -1, 1, 1}));
     prediction.select(2, 3).exp_().mul_(anchors.select(1, 1).view({1, -1, 1, 1}));
 
-    return prediction.transpose(2, -1).contiguous().view({batch_size, -1, bbox_attrs});
+    return prediction.transpose(2, -1).contiguous().view({prediction.size(0), -1, prediction.size(2)});
 }
 
 void center_to_corner(torch::Tensor &bbox) {

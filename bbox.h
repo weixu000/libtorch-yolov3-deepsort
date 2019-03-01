@@ -6,9 +6,9 @@
 torch::Tensor iou(torch::Tensor box1, torch::Tensor box2);
 
 torch::Tensor anchor_transform(torch::Tensor prediction,
-                               torch::IntList inp_dim,
                                torch::Tensor anchors,
-                               int num_classes);
+                               torch::TensorList grid,
+                               torch::IntList stride);
 
 using Detection = std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>;
 using DetectionList = std::vector<Detection>;
