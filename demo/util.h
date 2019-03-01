@@ -5,8 +5,6 @@
 #include <torch/torch.h>
 #include <sstream>
 
-#include "Detector.h"
-
 using ClassList=std::vector<std::string>;
 
 inline ClassList load_classes(const std::string &path) {
@@ -73,24 +71,3 @@ inline void draw_bbox(cv::Mat &img, torch::Tensor bbox, TLabelFn label_fn, TColo
         }
     }
 }
-
-inline void draw_detections(cv::Mat &img, const Detection &detections,
-                            const ClassList &classes, const ColorMap &cmap) {
-    auto&[bbox, cls, scr] = detections;
-    auto cls_acc = cls.accessor<int64_t, 1>();
-    auto scr_acc = scr.accessor<float, 1>();
-    std::ostringstream str;
-
-    auto label_fn = [&](int64_t i) {
-        str.str("");
-        str << classes[cls_acc[i]] << " "
-            << std::fixed << std::setprecision(2) << scr_acc[i];
-        return str.str();
-    };
-    auto color_fn = [&](int64_t i) {
-        return cmap[cls_acc[i]];
-    };
-
-    draw_bbox(img, bbox, label_fn, color_fn);
-}
-

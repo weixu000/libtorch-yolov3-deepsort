@@ -2,31 +2,6 @@
 
 using torch::Tensor;
 
-// returns the IoU of two bounding boxes
-Tensor iou(Tensor box1, Tensor box2) {
-    auto b1_x1 = box1.select(1, 0).unsqueeze_(1);
-    auto b1_y1 = box1.select(1, 1).unsqueeze_(1);
-    auto b1_x2 = box1.select(1, 2).unsqueeze_(1);
-    auto b1_y2 = box1.select(1, 3).unsqueeze_(1);
-
-    auto b2_x1 = box2.select(1, 0).unsqueeze_(0);
-    auto b2_y1 = box2.select(1, 1).unsqueeze_(0);
-    auto b2_x2 = box2.select(1, 2).unsqueeze_(0);
-    auto b2_y2 = box2.select(1, 3).unsqueeze_(0);
-
-    auto inter_x1 = max(b1_x1, b2_x1);
-    auto inter_y1 = max(b1_y1, b2_y1);
-    auto inter_x2 = min(b1_x2, b2_x2);
-    auto inter_y2 = min(b1_y2, b2_y2);
-
-    auto inter_area = clamp(inter_x2 - inter_x1 + 1, 0) * clamp(inter_y2 - inter_y1 + 1, 0);
-
-    auto b1_area = (b1_x2 - b1_x1 + 1) * (b1_y2 - b1_y1 + 1);
-    auto b2_area = (b2_x2 - b2_x1 + 1) * (b2_y2 - b2_y1 + 1);
-
-    return inter_area / (b1_area + b2_area - inter_area);
-}
-
 torch::Tensor anchor_transform(torch::Tensor prediction,
                                torch::Tensor anchors,
                                torch::TensorList grid,
@@ -55,7 +30,7 @@ void center_to_corner(torch::Tensor bbox) {
     bbox.select(1, 3) += bbox.select(1, 1);
 }
 
-DetectionList threshold_confidence(torch::Tensor pred, float threshold) {
+DetTensorList threshold_confidence(torch::Tensor pred, float threshold) {
     auto max_cls_tup = pred.slice(2, 5).max(2);
     auto max_cls_score = std::get<0>(max_cls_tup);
     auto max_cls = std::get<1>(max_cls_tup);
@@ -65,7 +40,7 @@ DetectionList threshold_confidence(torch::Tensor pred, float threshold) {
 
     pred = pred.slice(2, 0, 4);
 
-    DetectionList out;
+    DetTensorList out;
     for (int64_t i = 0; i < pred.size(0); ++i) {
         auto index = prob_thresh[i].nonzero().squeeze_();
         out.emplace_back(pred[i].index_select(0, index),
@@ -75,50 +50,23 @@ DetectionList threshold_confidence(torch::Tensor pred, float threshold) {
     return out;
 }
 
-void NMS(Detection &batch, float threshold) {
-    auto bbox_batch = std::get<0>(batch);
-    auto cls_batch = std::get<1>(batch);
-    auto scr_batch = std::get<2>(batch);
+static inline float iou(const cv::Rect2f &bb_test, const cv::Rect2f &bb_gt) {
+    auto in = (bb_test & bb_gt).area();
+    auto un = bb_test.area() + bb_gt.area() - in;
 
-    std::list<int64_t> cls_unique;
-    auto cls_batch_acc = cls_batch.accessor<int64_t, 1>();
-    for (int64_t i = 0; i < cls_batch_acc.size(0); ++i) {
-        cls_unique.emplace_back(cls_batch_acc[i]);
-    }
-    cls_unique.sort();
-    cls_unique.unique();
-
-    auto ind_batch = torch::empty({0}, torch::dtype(torch::kInt64));
-    for (auto &cls:cls_unique) {
-        auto ind_cls = (cls_batch == cls).nonzero().squeeze(1);
-        auto bbox_cls = bbox_batch.index_select(0, ind_cls);
-        auto scr_cls = scr_batch.index_select(0, ind_cls);
-
-        auto sort_tup = scr_cls.sort(-1, true);
-        scr_cls = std::get<0>(sort_tup);
-        auto sorted_ind = std::get<1>(sort_tup);
-        ind_cls = ind_cls.index_select(0, sorted_ind);
-        bbox_cls = bbox_cls.index_select(0, sorted_ind);
-
-        int64_t i = 0;
-        while (i < ind_cls.size(0)) {
-            auto ious = iou(bbox_cls[i].unsqueeze(0), bbox_cls.slice(0, i + 1)).squeeze(0);
-
-            auto iou_ind = (ious < threshold).nonzero().squeeze(1);
-
-            ind_cls.slice(0, i + 1, i + 1 + iou_ind.size(0)) = ind_cls.index_select(0, i + 1 + iou_ind);
-            bbox_cls.slice(0, i + 1, i + 1 + iou_ind.size(0)) = bbox_cls.index_select(0, i + 1 + iou_ind);
-
-            ind_cls = ind_cls.slice(0, 0, i + 1 + iou_ind.size(0));
-            bbox_cls = bbox_cls.slice(0, 0, i + 1 + iou_ind.size(0));
-
-            ++i;
-        }
-        ind_batch = torch::cat({ind_batch, ind_cls});
-    }
-    std::get<0>(batch) = std::get<0>(batch).index_select(0, ind_batch);
-    std::get<1>(batch) = std::get<1>(batch).index_select(0, ind_batch);
-    std::get<2>(batch) = std::get<2>(batch).index_select(0, ind_batch);
+    return in / un;
 }
 
+void NMS(std::vector<Detection> &dets, float threshold) {
+    std::sort(dets.begin(), dets.end(),
+              [](const Detection &a, const Detection &b) { return a.scr > b.scr; });
+
+    for (size_t i = 0; i < dets.size(); ++i) {
+        dets.erase(std::remove_if(dets.begin() + i, dets.end(),
+                                  [&](const Detection &d) {
+                                      return iou(dets[i].bbox, d.bbox) > 1 - threshold;
+                                  }),
+                   dets.end());
+    }
+}
 

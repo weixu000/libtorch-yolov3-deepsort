@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "Detector.h"
 #include "letterbox.h"
 #include "bbox.h"
@@ -18,29 +20,49 @@ Detector::Detector(torch::IntList _inp_dim)
     }
 }
 
-Detection Detector::detect(cv::Mat image) {
+
+std::vector<cv::Rect2f> Detector::detect(cv::Mat image) {
     int64_t orig_dim[] = {image.rows, image.cols};
     image = letterbox_img(image, inp_dim);
     cv::cvtColor(image, image, cv::COLOR_RGB2BGR);
     image.convertTo(image, CV_32F, 1.0 / 255);
 
     auto img_tensor = torch::CPU(torch::kFloat32).tensorFromBlob(image.data,
-                                                                 {1, inp_dim[0], inp_dim[1], 3});
-    img_tensor = img_tensor.permute({0, 3, 1, 2});
+                                                                 {1, inp_dim[0], inp_dim[1], 3})
+            .permute({0, 3, 1, 2});
     auto img_var = torch::autograd::make_variable(img_tensor, false).to(torch::kCUDA);
-
     auto prediction = net.forward(img_var);
-
-    auto out = threshold_confidence(prediction, 0.1)[0];
-    auto &[bbox, cls, scr] = out;
+    auto[bbox, cls, scr] = threshold_confidence(prediction, 0.1)[0];
     bbox = bbox.cpu();
     cls = cls.cpu();
     scr = scr.cpu();
 
     center_to_corner(bbox);
-    NMS(out, 0.4);
-
     inv_letterbox_bbox(bbox, inp_dim, orig_dim);
+
+    auto bbox_acc = bbox.accessor<float, 2>();
+    auto cls_acc = cls.accessor<int64_t, 1>();
+    auto scr_acc = scr.accessor<float, 1>();
+    std::vector<Detection> dets;
+    for (int64_t i = 0; i < cls_acc.size(0); ++i) {
+        if (cls_acc[i] == 0) {
+            auto x1 = bbox_acc[i][0];
+            auto y1 = bbox_acc[i][1];
+            auto x2 = bbox_acc[i][2];
+            auto y2 = bbox_acc[i][3];
+            Detection d;
+            d.scr = scr_acc[i];
+            d.bbox = {x1, y1, x2 - x1, y2 - y1};
+            dets.push_back(d);
+        }
+    }
+
+    NMS(dets, 0.4f);
+
+    std::vector<cv::Rect2f> out;
+    for (auto &d:dets) {
+        out.push_back(d.bbox);
+    }
 
     return out;
 }
