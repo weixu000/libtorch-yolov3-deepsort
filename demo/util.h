@@ -5,7 +5,7 @@
 #include <torch/torch.h>
 #include <sstream>
 
-#include "bbox.h"
+#include "Detector.h"
 
 using ClassList=std::vector<std::string>;
 

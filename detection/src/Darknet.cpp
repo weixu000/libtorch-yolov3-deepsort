@@ -1,5 +1,6 @@
 #include "Darknet.h"
 #include "darknet_parsing.h"
+#include "bbox.h"
 
 using namespace std;
 

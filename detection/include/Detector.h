@@ -4,6 +4,8 @@
 #include "Darknet.h"
 #include <opencv2/opencv.hpp>
 
+using Detection = std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>;
+
 class Detector {
 public:
     explicit Detector(torch::IntList _inp_dim = torch::IntList());

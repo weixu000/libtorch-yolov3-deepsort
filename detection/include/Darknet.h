@@ -5,8 +5,6 @@
 #include <string>
 #include <vector>
 #include <map>
-#include "bbox.h"
-
 
 struct Darknet : torch::nn::Module {
 public:

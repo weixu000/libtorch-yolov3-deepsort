@@ -9,9 +9,6 @@ using namespace std;
 using namespace std::chrono;
 
 int main(int argc, const char *argv[]) {
-    auto classes = load_classes("data/coco.names");
-    auto cmap = color_map(classes.size());
-
     if (argc != 2) {
         cerr << "usage: yolo-app <image path>" << endl;
         return -1;

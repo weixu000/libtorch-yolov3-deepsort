@@ -2,6 +2,9 @@
 #define BBOX_H
 
 #include <torch/torch.h>
+#include "Detector.h"
+
+using DetectionList = std::vector<Detection>;
 
 torch::Tensor iou(torch::Tensor box1, torch::Tensor box2);
 
@@ -10,8 +13,6 @@ torch::Tensor anchor_transform(torch::Tensor prediction,
                                torch::TensorList grid,
                                torch::IntList stride);
 
-using Detection = std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>;
-using DetectionList = std::vector<Detection>;
 
 void center_to_corner(torch::Tensor bbox);
 

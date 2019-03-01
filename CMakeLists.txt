@@ -1,13 +1,12 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
-project(yolo-app)
+project(MyProject)
 
 find_package(OpenCV REQUIRED)
-include_directories(${OpenCV_INCLUDE_DIRS})
-
 find_package(Torch REQUIRED)
 
-aux_source_directory(. DIR_SRCS)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(yolo-app ${DIR_SRCS})
-target_link_libraries(yolo-app "${TORCH_LIBRARIES}" "${OpenCV_LIBS}")
-set_property(TARGET yolo-app PROPERTY CXX_STANDARD 17)
+add_subdirectory(detection)
+add_subdirectory(tracking)
+add_subdirectory(demo)

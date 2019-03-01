@@ -1,5 +1,6 @@
 #include "Detector.h"
 #include "letterbox.h"
+#include "bbox.h"
 
 Detector::Detector(torch::IntList _inp_dim)
         : net("models/yolov3.cfg") {
