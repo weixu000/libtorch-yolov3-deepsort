@@ -1,6 +1,5 @@
 #include "Darknet.h"
 #include "darknet_parsing.h"
-#include "bbox.h"
 
 using namespace std;
 
@@ -66,12 +65,26 @@ struct DetectionLayer : torch::nn::Module {
         }
 
         auto batch_size = prediction.size(0);
-        auto stride = {inp_dim[0] / grid_size[0], inp_dim[1] / grid_size[1]};
+        int64_t stride[] = {inp_dim[0] / grid_size[0], inp_dim[1] / grid_size[1]};
         auto num_anchors = anchors.size(0);
         auto bbox_attrs = prediction.size(1) / num_anchors;
         prediction = prediction.view({batch_size, num_anchors, bbox_attrs, grid_size[0], grid_size[1]});
 
-        return anchor_transform(prediction, anchors, grid, stride);
+        // sigmoid object confidence
+        prediction.select(2, 4).sigmoid_();
+
+        // softmax the class scores
+        prediction.slice(2, 5) = prediction.slice(2, 5).softmax(-1);
+
+        // sigmoid the centre_X, centre_Y
+        prediction.select(2, 0).sigmoid_().add_(grid[1].view({1, 1, 1, -1})).mul_(stride[1]);
+        prediction.select(2, 1).sigmoid_().add_(grid[0].view({1, 1, -1, 1})).mul_(stride[0]);
+
+        // log space transform height and the width
+        prediction.select(2, 2).exp_().mul_(anchors.select(1, 0).view({1, -1, 1, 1}));
+        prediction.select(2, 3).exp_().mul_(anchors.select(1, 1).view({1, -1, 1, 1}));
+
+        return prediction.transpose(2, -1).contiguous().view({prediction.size(0), -1, prediction.size(2)});
     }
 };
 

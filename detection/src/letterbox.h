@@ -30,10 +30,10 @@ static inline void inv_letterbox_bbox(torch::Tensor bbox, torch::IntList box_dim
     auto[new_h, new_w] = letterbox_dim(img_dim, box_dim);
 
     bbox.select(1, 0).add_(-(w - new_w) / 2).mul_(1.0f * img_w / new_w);
-    bbox.select(1, 2).add_(-(w - new_w) / 2).mul_(1.0f * img_w / new_w);
+    bbox.select(1, 2).mul_(1.0f * img_w / new_w);
 
     bbox.select(1, 1).add_(-(h - new_h) / 2).mul_(1.0f * img_h / new_h);
-    bbox.select(1, 3).add_(-(h - new_h) / 2).mul_(1.0f * img_h / new_h);
+    bbox.select(1, 3).mul_(1.0f * img_h / new_h);
 }
 
 #endif //LETTERBOX_H
