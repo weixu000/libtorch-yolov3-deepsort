@@ -1,5 +1,7 @@
 #include "KalmanTracker.h"
 
+using namespace cv;
+
 // Convert bounding box from [cx,cy,s,r] to [x,y,w,h] style.
 static inline StateType get_rect_xysr(float cx, float cy, float s, float r) {
     float w = sqrt(s * r);
@@ -17,8 +19,7 @@ static inline StateType get_rect_xysr(float cx, float cy, float s, float r) {
 
 int KalmanTracker::kf_count = 0;
 
-// initialize Kalman filter
-void KalmanTracker::init_kf(StateType stateMat) {
+KalmanTracker::KalmanTracker(StateType initRect) {
     int stateNum = 7;
     int measureNum = 4;
     kf = KalmanFilter(stateNum, measureNum, 0);
@@ -41,10 +42,10 @@ void KalmanTracker::init_kf(StateType stateMat) {
     setIdentity(kf.errorCovPost, Scalar::all(1));
 
     // initialize state vector with bounding box in [cx,cy,s,r] style
-    kf.statePost.at<float>(0, 0) = stateMat.x + stateMat.width / 2;
-    kf.statePost.at<float>(1, 0) = stateMat.y + stateMat.height / 2;
-    kf.statePost.at<float>(2, 0) = stateMat.area();
-    kf.statePost.at<float>(3, 0) = stateMat.width / stateMat.height;
+    kf.statePost.at<float>(0, 0) = initRect.x + initRect.width / 2;
+    kf.statePost.at<float>(1, 0) = initRect.y + initRect.height / 2;
+    kf.statePost.at<float>(2, 0) = initRect.area();
+    kf.statePost.at<float>(3, 0) = initRect.width / initRect.height;
 }
 
 // Predict the estimated bounding box.
@@ -84,5 +85,3 @@ StateType KalmanTracker::get_state() const {
     Mat s = kf.statePost;
     return get_rect_xysr(s.at<float>(0, 0), s.at<float>(1, 0), s.at<float>(2, 0), s.at<float>(3, 0));
 }
-
-

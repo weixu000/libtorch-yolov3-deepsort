@@ -3,27 +3,13 @@
 
 #include "opencv2/video/tracking.hpp"
 
-using namespace cv;
-
-using StateType=Rect2f;
+using StateType = cv::Rect2f;
 
 
 // This class represents the internel state of individual tracked objects observed as bounding box.
 class KalmanTracker {
 public:
-    explicit KalmanTracker(StateType initRect) {
-        init_kf(initRect);
-        m_time_since_update = 0;
-        m_hits = 0;
-        m_hit_streak = 0;
-        m_age = 0;
-        m_id = kf_count;
-        kf_count++;
-    }
-
-    ~KalmanTracker() {
-        m_history.clear();
-    }
+    explicit KalmanTracker(StateType initRect);
 
     StateType predict();
 
@@ -31,16 +17,14 @@ public:
 
     StateType get_state() const;
 
-    static int kf_count;
-
-    int m_time_since_update;
-    int m_hits;
-    int m_hit_streak;
-    int m_age;
-    int m_id;
+    int m_time_since_update = 0;
+    int m_hits = 0;
+    int m_hit_streak = 0;
+    int m_age = 0;
+    int m_id = kf_count++;
 
 private:
-    void init_kf(StateType stateMat);
+    static int kf_count;
 
     cv::KalmanFilter kf;
     cv::Mat measurement;

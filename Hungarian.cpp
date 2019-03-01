@@ -1,4 +1,3 @@
-///////////////////////////////////////////////////////////////////////////////
 // Hungarian.cpp: Implementation file for Class HungarianAlgorithm.
 // 
 // This is a C++ wrapper with slight modification of a hungarian algorithm implementation by Markus Buehren.
@@ -7,17 +6,13 @@
 // 
 // Both this code and the orignal code are published under the BSD license.
 // by Cong Ma, 2016
-//
+
 #include <cmath>
 #include <cfloat>
 
 #include "Hungarian.h"
 
-
-HungarianAlgorithm::HungarianAlgorithm() {}
-
-HungarianAlgorithm::~HungarianAlgorithm() {}
-
+using namespace std;
 
 //********************************************************//
 // A single function wrapper for solving assignment problem.
@@ -27,12 +22,12 @@ double HungarianAlgorithm::Solve(vector<vector<double>> &DistMatrix, vector<int>
         Assignment.clear();
         return 0;
     }
-    unsigned int nRows = DistMatrix.size();
-    unsigned int nCols = DistMatrix[0].size();
+    auto nRows = DistMatrix.size();
+    auto nCols = DistMatrix[0].size();
 
-    double *distMatrixIn = new double[nRows * nCols];
-    int *assignment = new int[nRows];
-    double cost = 0.0;
+    auto distMatrixIn = new double[nRows * nCols];
+    auto assignment = new int[nRows];
+    auto cost = 0.0;
 
     // Fill in the distMatrixIn. Mind the index is "i + nRows * j".
     // Here the cost matrix of size MxN is defined as a double precision array of N*M elements.

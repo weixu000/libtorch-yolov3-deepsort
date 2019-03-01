@@ -1,4 +1,3 @@
-///////////////////////////////////////////////////////////////////////////////
 // Hungarian.h: Header file for Class HungarianAlgorithm.
 // 
 // This is a C++ wrapper with slight modification of a hungarian algorithm implementation by Markus Buehren.
@@ -7,21 +6,14 @@
 // 
 // Both this code and the orignal code are published under the BSD license.
 // by Cong Ma, 2016
-// 
 
 #include <iostream>
 #include <vector>
 
-using namespace std;
-
 
 class HungarianAlgorithm {
 public:
-    HungarianAlgorithm();
-
-    ~HungarianAlgorithm();
-
-    double Solve(vector<vector<double>> &DistMatrix, vector<int> &Assignment);
+    double Solve(std::vector<std::vector<double>> &DistMatrix, std::vector<int> &Assignment);
 
 private:
     void assignmentoptimal(int *assignment, double *cost, double *distMatrix, int nOfRows, int nOfColumns);

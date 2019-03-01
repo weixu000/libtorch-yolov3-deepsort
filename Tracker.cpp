@@ -5,9 +5,10 @@
 #include "Hungarian.h"
 
 using namespace std;
+using namespace cv;
 
 // Computes IOU between two bounding boxes
-float GetIOU(Rect2f bb_test, Rect2f bb_gt) {
+static inline float GetIOU(Rect2f bb_test, Rect2f bb_gt) {
     float in = (bb_test & bb_gt).area();
     float un = bb_test.area() + bb_gt.area() - in;
 
