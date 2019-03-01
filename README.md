@@ -3,37 +3,16 @@ A Libtorch implementation of the YOLO v3 object detection algorithm, written wit
 
 The code is based on the [pytorch version](https://github.com/ayooshkathuria/pytorch-yolo-v3), I rewritten it with C++.
 
-## Requirements
-1. LibTorch v1.0.0
-2. Cuda
-3. OpenCV (just used in the example)
+# SORT
+The former code is from [walktree](https://github.com/walktree/libtorch-yolov3).
+However, I also merged [C++ version of SORT](https://github.com/mcximing/sort-cpp) to do tracking.
 
+A similar software in Python is [here](https://github.com/weixu000/pytorch-yolov3), which also rewrite form [the most starred version](https://github.com/ayooshkathuria/pytorch-yolo-v3) and [SORT](https://github.com/abewley/sort)
 
-## To compile
-1. cmake3
-2. gcc 5.4 +
+# Performance
+Currently on a GTX 1060 6G it consumes about 1G RAM and have 37 FPS.
 
+The video I test is [TownCentreXVID.avi](http://www.robots.ox.ac.uk/ActiveVision/Research/Projects/2009bbenfold_headpose/Datasets/TownCentreXVID.avi).
 
-
-```
-mkdir build && cd build
-cmake3 -DCMAKE_PREFIX_PATH="your libtorch path" ..
-
-# if there is multi versions of gcc, then tell cmake which one your want to use, e.g.:
-cmake3 -DCMAKE_PREFIX_PATH="your libtorch path" -DCMAKE_C_COMPILER=/usr/local/bin/gcc -DCMAKE_CXX_COMPILER=/usr/local/bin/g++ ..
-```
-
-
-## Ruuning the detector
-
-The first thing you need to do is to get the weights file for v3:
-
-```
-cd models
-wget https://pjreddie.com/media/files/yolov3.weights 
-```
-
-On Single image:
-```
-./yolo-app ../imgs/person.jpg
-```
+# TODO
+Still under construction...
