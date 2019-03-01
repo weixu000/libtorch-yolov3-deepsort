@@ -56,7 +56,7 @@ struct DetectionLayer : torch::nn::Module {
                                                        {static_cast<int64_t>(_anchors.size() / 2), 2}).clone())),
               grid{torch::empty({0}), torch::empty({0})} {}
 
-    torch::Tensor forward(torch::Tensor prediction, torch::IntList inp_dim, int num_classes) {
+    torch::Tensor forward(torch::Tensor prediction, torch::IntList inp_dim) {
         auto grid_size = prediction.sizes().slice(2);
         if (grid_size[0] != grid[0].size(0) || grid_size[1] != grid[1].size(0)) {
             // update grid if size not match
@@ -66,8 +66,8 @@ struct DetectionLayer : torch::nn::Module {
 
         auto batch_size = prediction.size(0);
         auto stride = {inp_dim[0] / grid_size[0], inp_dim[1] / grid_size[1]};
-        auto bbox_attrs = 5 + num_classes;
         auto num_anchors = anchors.size(0);
+        auto bbox_attrs = prediction.size(1) / num_anchors;
         prediction = prediction.view({batch_size, num_anchors, bbox_attrs, grid_size[0], grid_size[1]});
 
         return anchor_transform(prediction, anchors, grid, stride);
@@ -90,8 +90,7 @@ torch::Tensor Darknet::forward(torch::Tensor x) {
 
     std::vector<torch::Tensor> outputs(module_count);
 
-    torch::Tensor result;
-    auto write = false;
+    vector<torch::Tensor> result;
 
     for (int i = 0; i < module_count; i++) {
         auto block = blocks[i + 1];
@@ -100,8 +99,7 @@ torch::Tensor Darknet::forward(torch::Tensor x) {
 
         if (layer_type == "net")
             continue;
-
-        if (layer_type == "convolutional" || layer_type == "upsample" || layer_type == "maxpool") {
+        else if (layer_type == "convolutional" || layer_type == "upsample" || layer_type == "maxpool") {
             x = module_list[i]->forward(x);
             outputs[i] = x;
         } else if (layer_type == "route") {
@@ -127,22 +125,12 @@ torch::Tensor Darknet::forward(torch::Tensor x) {
             x = outputs[i - 1] + outputs[i + from];
             outputs[i] = x;
         } else if (layer_type == "yolo") {
-            auto net_info = blocks[0];
-            int num_classes = get_int_from_cfg(block, "classes", 0);
-
-            x = module_list[i]->forward(x, inp_dim, num_classes);
-
-            if (!write) {
-                result = x;
-                write = true;
-            } else {
-                result = torch::cat({result, x}, 1);
-            }
-
+            x = module_list[i]->forward(x, inp_dim);
+            result.push_back(x);
             outputs[i] = outputs[i - 1];
         }
     }
-    return result;
+    return torch::cat(result, 1);
 }
 
 void Darknet::create_modules() {
