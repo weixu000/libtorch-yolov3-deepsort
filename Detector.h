@@ -8,7 +8,7 @@ class Detector {
 public:
     explicit Detector(torch::IntList _inp_dim = torch::IntList());
 
-    Detection detect(cv::Mat origin_image);
+    Detection detect(cv::Mat image);
 
 private:
     Darknet net;

@@ -1,4 +1,5 @@
 #include "Detector.h"
+#include "letterbox.h"
 
 Detector::Detector(torch::IntList _inp_dim)
         : net("models/yolov3.cfg") {
@@ -16,16 +17,13 @@ Detector::Detector(torch::IntList _inp_dim)
     }
 }
 
-Detection Detector::detect(cv::Mat origin_image) {
-    cv::Mat resized_image;
+Detection Detector::detect(cv::Mat image) {
+    int64_t orig_dim[] = {image.rows, image.cols};
+    image = letterbox_img(image, inp_dim);
+    cv::cvtColor(image, image, cv::COLOR_RGB2BGR);
+    image.convertTo(image, CV_32F, 1.0 / 255);
 
-    cv::cvtColor(origin_image, resized_image, cv::COLOR_RGB2BGR);
-    cv::resize(resized_image, resized_image, cv::Size(inp_dim[1], inp_dim[0]));
-
-    cv::Mat img_float;
-    resized_image.convertTo(img_float, CV_32F, 1.0 / 255);
-
-    auto img_tensor = torch::CPU(torch::kFloat32).tensorFromBlob(img_float.data,
+    auto img_tensor = torch::CPU(torch::kFloat32).tensorFromBlob(image.data,
                                                                  {1, inp_dim[0], inp_dim[1], 3});
     img_tensor = img_tensor.permute({0, 3, 1, 2});
     auto img_var = torch::autograd::make_variable(img_tensor, false).to(torch::kCUDA);
@@ -41,13 +39,7 @@ Detection Detector::detect(cv::Mat origin_image) {
     center_to_corner(bbox);
     NMS(out, 0.4);
 
-    auto w_scale = float(origin_image.cols) / inp_dim[0];
-    auto h_scale = float(origin_image.rows) / inp_dim[1];
-
-    bbox.select(1, 0).mul_(w_scale);
-    bbox.select(1, 1).mul_(h_scale);
-    bbox.select(1, 2).mul_(w_scale);
-    bbox.select(1, 3).mul_(h_scale);
+    inv_letterbox_bbox(bbox, inp_dim, orig_dim);
 
     return out;
 }
