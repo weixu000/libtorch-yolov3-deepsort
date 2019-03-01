@@ -14,26 +14,15 @@ struct EmptyLayer : torch::nn::Module {
 struct UpsampleLayer : torch::nn::Module {
     int _stride;
 
-    explicit UpsampleLayer(int stride) {
-        _stride = stride;
-    }
+    explicit UpsampleLayer(int stride) : _stride(stride) {}
 
     torch::Tensor forward(torch::Tensor x) {
+        auto sizes = x.sizes();
 
-        torch::IntList sizes = x.sizes();
+        auto w = sizes[2] * _stride;
+        auto h = sizes[3] * _stride;
 
-        int64_t w, h;
-
-        if (sizes.size() == 4) {
-            w = sizes[2] * _stride;
-            h = sizes[3] * _stride;
-
-            x = torch::upsample_nearest2d(x, {w, h});
-        } else if (sizes.size() == 3) {
-            w = sizes[2] * _stride;
-            x = torch::upsample_nearest1d(x, {w});
-        }
-        return x;
+        return torch::upsample_nearest2d(x, {w, h});
     }
 };
 
@@ -41,10 +30,7 @@ struct MaxPoolLayer2D : torch::nn::Module {
     int _kernel_size;
     int _stride;
 
-    MaxPoolLayer2D(int kernel_size, int stride) {
-        _kernel_size = kernel_size;
-        _stride = stride;
-    }
+    MaxPoolLayer2D(int kernel_size, int stride) : _kernel_size(kernel_size), _stride(stride) {}
 
     torch::Tensor forward(torch::Tensor x) {
         if (_stride != 1) {
