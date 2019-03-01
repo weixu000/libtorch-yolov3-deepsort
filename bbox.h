@@ -13,7 +13,7 @@ torch::Tensor anchor_transform(torch::Tensor prediction,
 using Detection = std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>;
 using DetectionList = std::vector<Detection>;
 
-void center_to_corner(torch::Tensor &bbox);
+void center_to_corner(torch::Tensor bbox);
 
 DetectionList threshold_confidence(torch::Tensor pred, float threshold);
 

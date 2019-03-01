@@ -48,7 +48,7 @@ torch::Tensor anchor_transform(torch::Tensor prediction,
     return prediction.transpose(2, -1).contiguous().view({prediction.size(0), -1, prediction.size(2)});
 }
 
-void center_to_corner(torch::Tensor &bbox) {
+void center_to_corner(torch::Tensor bbox) {
     bbox.select(1, 0) -= bbox.select(1, 2) / 2;
     bbox.select(1, 1) -= bbox.select(1, 3) / 2;
     bbox.select(1, 2) += bbox.select(1, 0);
