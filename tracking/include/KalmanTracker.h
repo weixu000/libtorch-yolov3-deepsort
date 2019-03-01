@@ -18,9 +18,7 @@ public:
     StateType get_state() const;
 
     int time_since_update = 0;
-    int hits = 0;
     int hit_streak = 0;
-    int age = 0;
     int id = kf_count++;
 
 private:
@@ -28,8 +26,6 @@ private:
 
     cv::KalmanFilter kf;
     cv::Mat measurement;
-
-    std::vector<StateType> history;
 };
 
 

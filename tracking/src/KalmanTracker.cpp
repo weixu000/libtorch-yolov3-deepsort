@@ -51,14 +51,11 @@ KalmanTracker::KalmanTracker(StateType initRect) {
 
 // Predict the estimated bounding box.
 StateType KalmanTracker::predict() {
-    ++age;
-
     if (time_since_update > 0)
         hit_streak = 0;
     ++time_since_update;
 
     StateType predictBox = get_rect_xysr(kf.predict());
-    history.push_back(predictBox);
 
     return predictBox;
 }
@@ -66,8 +63,6 @@ StateType KalmanTracker::predict() {
 // Update the state vector with observed bounding box.
 void KalmanTracker::update(StateType stateMat) {
     time_since_update = 0;
-    history.clear();
-    ++hits;
     ++hit_streak;
 
     // measurement
