@@ -113,12 +113,10 @@ vector<Track> Tracker::update(const vector<Rect2f> &dets) {
 
     vector<Track> ret;
     for (auto &t : trackers) {
-//        if (t.hit_streak >= min_hits || frame_count <= min_hits) {
         Track res;
         res.box = t.get_state();
         res.id = t.id + 1;
         ret.push_back(res);
-//        }
     }
     return ret;
 }
