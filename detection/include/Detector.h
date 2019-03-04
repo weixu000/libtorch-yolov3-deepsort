@@ -11,7 +11,7 @@ public:
     std::vector<cv::Rect2f> detect(cv::Mat image);
 
 private:
-    Darknet net;
+    Darknet net; // TODO: maybe hide Darknet
     int64_t inp_dim[2];
 };
 

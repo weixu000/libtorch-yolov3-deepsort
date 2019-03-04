@@ -5,14 +5,14 @@
 
 Detector::Detector(torch::IntList _inp_dim)
         : net("models/yolov3.cfg") {
-    net.load_weights("weights/yolov3.weights");
+    net.load_weights("weights/yolov3.weights"); // TODO: do not hard-code path
     net.to(torch::kCUDA);
     net.eval();
     torch::NoGradGuard no_grad;
 
     if (_inp_dim.empty()) {
-        inp_dim[0] = std::atoi(net.get_net_info().at("height").c_str());
-        inp_dim[1] = std::atoi(net.get_net_info().at("width").c_str());
+        inp_dim[0] = std::atoi(net.net_info().at("height").c_str());
+        inp_dim[1] = std::atoi(net.net_info().at("width").c_str());
     } else {
         inp_dim[0] = _inp_dim[0];
         inp_dim[1] = _inp_dim[1];

@@ -3,6 +3,7 @@
 
 using namespace std;
 
+// TODO: use TORCH_MODULE
 struct EmptyLayer : torch::nn::Module {
     EmptyLayer() = default;
 
@@ -95,9 +96,10 @@ Darknet::Darknet(const string &cfg_file) {
 }
 
 void Darknet::load_weights(const string &weight_file) {
-    ::load_weights(weight_file, blocks, module_list);
+    ::load_weights(weight_file, blocks, module_list); // TODO: remove this function
 }
 
+// TODO: reimplement the python version
 torch::Tensor Darknet::forward(torch::Tensor x) {
     auto inp_dim = x.sizes().slice(2);
     auto module_count = module_list.size();
@@ -147,6 +149,7 @@ torch::Tensor Darknet::forward(torch::Tensor x) {
     return torch::cat(result, 1);
 }
 
+// TODO: reimplement the python version
 void Darknet::create_modules() {
     int prev_filters = 3;
 
