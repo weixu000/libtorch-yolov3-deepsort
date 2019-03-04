@@ -11,12 +11,15 @@ struct Track {
 
 class Tracker {
 public:
+    explicit Tracker(int age = 10, int hits = 3, float iou = 0.3f)
+            : max_age(age), min_hits(hits), iou_threshold(iou) {}
+
     std::vector<Track> update(const std::vector<cv::Rect2f> &dets);
 
 private:
-    static const int max_age;
-    static const int min_hits;
-    static const float iou_threshold;
+    const int max_age;
+    const int min_hits;
+    const float iou_threshold;
 
     std::vector<KalmanTracker> trackers;
 

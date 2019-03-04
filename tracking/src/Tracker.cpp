@@ -70,10 +70,6 @@ static inline auto associate_detections_to_trackers(const vector<Rect2f> &dets,
     return make_tuple(matched, unmatched_dets, unmatched_trks);
 }
 
-const int Tracker::max_age = 10;
-const int Tracker::min_hits = 3;
-const float Tracker::iou_threshold = 0.3f;
-
 vector<Track> Tracker::update(const vector<Rect2f> &dets) {
     ++frame_count;
 
@@ -117,12 +113,12 @@ vector<Track> Tracker::update(const vector<Rect2f> &dets) {
 
     vector<Track> ret;
     for (auto &t : trackers) {
-        if (t.hit_streak >= min_hits || frame_count <= min_hits) {
-            Track res;
-            res.box = t.get_state();
-            res.id = t.id + 1;
-            ret.push_back(res);
-        }
+//        if (t.hit_streak >= min_hits || frame_count <= min_hits) {
+        Track res;
+        res.box = t.get_state();
+        res.id = t.id + 1;
+        ret.push_back(res);
+//        }
     }
     return ret;
 }

@@ -3,8 +3,10 @@
 #include "Detector.h"
 #include "letterbox.h"
 
-Detector::Detector(torch::IntList _inp_dim)
-        : net("models/yolov3.cfg") {
+Detector::Detector(torch::IntList _inp_dim,
+                   float nms, float confidence)
+        : net("models/yolov3.cfg"),
+          NMS_threshold(nms), confidence_threshold(confidence) {
     net.load_weights("weights/yolov3.weights"); // TODO: do not hard-code path
     net.to(torch::kCUDA);
     net.eval();
@@ -79,7 +81,7 @@ std::vector<cv::Rect2f> Detector::detect(cv::Mat image) {
             .permute({0, 3, 1, 2});
     auto img_var = torch::autograd::make_variable(img_tensor, false).to(torch::kCUDA);
     auto prediction = net.forward(img_var).squeeze_(0);
-    auto[bbox, cls, scr] = threshold_confidence(prediction, 0.1f);
+    auto[bbox, cls, scr] = threshold_confidence(prediction, confidence_threshold);
     bbox = bbox.cpu();
     cls = cls.cpu();
     scr = scr.cpu();
@@ -99,7 +101,7 @@ std::vector<cv::Rect2f> Detector::detect(cv::Mat image) {
         dets.emplace_back(r, scr_acc[i]);
     }
 
-    NMS(dets, 0.4f);
+    NMS(dets, NMS_threshold);
 
     std::vector<cv::Rect2f> out;
     for (auto &d:dets) {
