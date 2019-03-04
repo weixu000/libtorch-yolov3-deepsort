@@ -72,7 +72,7 @@ static inline auto associate_detections_to_trackers(const vector<Rect2f> &dets,
 
 const int Tracker::max_age = 10;
 const int Tracker::min_hits = 3;
-const float Tracker::iou_threshold = 0.3;
+const float Tracker::iou_threshold = 0.3f;
 
 vector<Track> Tracker::update(const vector<Rect2f> &dets) {
     ++frame_count;
@@ -84,7 +84,8 @@ vector<Track> Tracker::update(const vector<Rect2f> &dets) {
     trackers.erase(remove_if(trackers.begin(), trackers.end(),
                              [](const KalmanTracker &t) {
                                  auto bbox = t.get_state();
-                                 return !(bbox.x >= 0 && bbox.y >= 0);
+                                 return std::isnan(bbox.x) || std::isnan(bbox.y)
+                                        || std::isnan(bbox.width) || std::isnan(bbox.height);
                              }),
                    trackers.end());
 

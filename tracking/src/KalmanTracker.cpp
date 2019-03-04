@@ -10,11 +10,6 @@ static inline StateType get_rect_xysr(const Mat &xysr) {
     float x = (cx - w / 2);
     float y = (cy - h / 2);
 
-    if (x < 0 && cx > 0)
-        x = 0;
-    if (y < 0 && cy > 0)
-        y = 0;
-
     return StateType(x, y, w, h);
 }
 
