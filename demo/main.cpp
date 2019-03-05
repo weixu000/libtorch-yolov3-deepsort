@@ -1,5 +1,23 @@
 #include <opencv2/opencv.hpp>
 
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+
+#if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
+
+#include <GL/gl3w.h>    // Initialize with gl3wInit()
+
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
+#include <GL/glew.h>    // Initialize with glewInit()
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
+#include <glad/glad.h>  // Initialize with gladLoadGL()
+#else
+#include IMGUI_IMPL_OPENGL_LOADER_CUSTOM
+#endif
+
+#include <GLFW/glfw3.h>
+
 #include "Detector.h"
 #include "util.h"
 #include "Tracker.h"
@@ -9,7 +27,99 @@ using namespace std::chrono;
 
 struct Target {
     vector<pair<int, cv::Rect2f>> trajectories;
+    cv::Mat snapshot;
+    GLuint snapshot_tex;
 };
+
+static void glfw_error_callback(int error, const char *description) {
+    cerr << "Glfw Error" << error << ": " << description << endl;
+}
+
+static GLFWwindow *setup_UI() {
+    // Setup window
+    glfwSetErrorCallback(glfw_error_callback);
+    if (!glfwInit())
+        return nullptr;
+
+    // Decide GL+GLSL versions
+#if __APPLE__
+    // GL 3.2 + GLSL 150
+    const char* glsl_version = "#version 150";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
+#else
+    // GL 3.0 + GLSL 130
+    const char *glsl_version = "#version 130";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+    //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+#endif
+
+    // Create window with graphics context
+    GLFWwindow *window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", NULL, NULL);
+    if (!window)
+        return nullptr;
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(1); // Enable vsync
+
+    // Initialize OpenGL loader
+#if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
+    bool err = gl3wInit() != 0;
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
+    bool err = glewInit() != GLEW_OK;
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
+    bool err = gladLoadGL() == 0;
+#else
+    bool err = false; // If you use IMGUI_IMPL_OPENGL_LOADER_CUSTOM, your loader is likely to requires some form of initialization.
+#endif
+    if (err) {
+        fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+        return nullptr;
+    }
+
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::GetIO().IniFilename = nullptr;
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    //ImGui::StyleColorsClassic();
+
+    // Setup Platform/Renderer bindings
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
+    return window;
+}
+
+static void mat_to_texture(const cv::Mat &mat, GLuint texture) {
+    assert(mat.isContinuous());
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0,
+                 GL_RGB,
+                 mat.cols, mat.rows,
+                 0,
+                 GL_BGR, GL_UNSIGNED_BYTE, mat.data);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+static int64_t orig_dim[2], inp_dim[2];
+
+static void image_window(const char *name, GLuint texture,
+                         bool *p_open = __null) {
+    ImGui::SetNextWindowSizeConstraints({inp_dim[1], inp_dim[0]}, {orig_dim[1], orig_dim[0]});
+    ImGui::Begin(name, p_open);
+    ImGui::Image(reinterpret_cast<ImTextureID>(texture), ImGui::GetContentRegionAvail());
+    ImGui::End();
+}
 
 int main(int argc, const char *argv[]) {
     if (argc != 2) {
@@ -23,52 +133,161 @@ int main(int argc, const char *argv[]) {
         return -2;
     }
 
-    int64_t orig_dim[] = {cap.get(cv::CAP_PROP_FRAME_HEIGHT), cap.get(cv::CAP_PROP_FRAME_WIDTH)};
-    for (auto &x:orig_dim) {
+    orig_dim[0] = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+    orig_dim[1] = cap.get(cv::CAP_PROP_FRAME_WIDTH);
+    for (size_t i = 0; i < 2; ++i) {
         auto factor = 1 << 5;
-        x = (x / 3 / factor + 1) * factor;
+        inp_dim[i] = (orig_dim[i] / 3 / factor + 1) * factor;
     }
-    Detector detector(orig_dim);
+    Detector detector(inp_dim);
     Tracker tracker;
+
+    auto window = setup_UI();
+    if (!window) {
+        cerr << "GUI failed" << endl;
+        return -1;
+    }
 
     std::map<int, Target> targets;
 
-    cv::Mat origin_image;
-    for (int frame = 0; cap.read(origin_image); ++frame) {
-        auto start = high_resolution_clock::now();
-        auto dets = detector.detect(origin_image);
-        auto tracks = tracker.update(dets);
-        auto end = high_resolution_clock::now();
+    GLuint texture[3];
+    glGenTextures(sizeof(texture) / sizeof(texture), texture);
 
-        for (auto &t:tracks) {
-            targets[t.id].trajectories.emplace_back(frame, t.box);
-        }
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
 
-        for (auto &[id, t]:targets) {
-            if (t.trajectories.back().first == frame) {
-                cv::rectangle(origin_image, t.trajectories.back().second, {0, 0, 255});
-                draw_text(origin_image, to_string(id), {0, 0, 255}, t.trajectories.back().second.tl());
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
 
-                for (auto it = t.trajectories.begin(); it + 1 != t.trajectories.end(); ++it) {
-                    auto pt1 = (it->second.tl() + it->second.br()) / 2;
-                    auto pt2 = ((it + 1)->second.tl() + (it + 1)->second.br()) / 2;
-                    cv::line(origin_image, pt1, pt2, {0, 0, 255});
+        static auto show_demo_window = false;
+        static auto show_dets_window = false;
+        static auto show_trks_window = false;
+        static auto show_res_window = true;
+        static auto show_target_window = true;
+        static auto playing = false;
+
+        ImGui::Begin("Control", nullptr, ImGuiWindowFlags_NoResize);
+        ImGui::Text("Framerate: %.1f", ImGui::GetIO().Framerate);
+        ImGui::Separator();
+        ImGui::Checkbox("Show demo window", &show_demo_window);
+        ImGui::Checkbox("Show detection window", &show_dets_window);
+        ImGui::Checkbox("Show tracking window", &show_trks_window);
+        ImGui::Checkbox("Show result window", &show_res_window);
+        ImGui::Checkbox("Show target window", &show_target_window);
+        ImGui::Separator();
+        ImGui::Checkbox("Playing", &playing);
+        auto next = ImGui::Button("Next");
+        ImGui::End();
+
+        if (show_demo_window)
+            ImGui::ShowDemoWindow(&show_demo_window);
+
+        static cv::Mat image(orig_dim[0], orig_dim[1], CV_8UC3, {0, 0, 0});
+        static cv::Mat dets_image = image.clone();
+        static cv::Mat trks_image = image.clone();
+        static cv::Mat ret_image = image.clone();
+
+        if ((playing || next) && cap.read(image)) {
+            auto dets = detector.detect(image);
+            auto trks = tracker.update(dets);
+
+            static auto frame = 0;
+            cv::Rect2f rec(0, 0, image.cols, image.rows);
+            for (auto &[id, box]:trks) {
+                if (rec.contains(box.tl()) && rec.contains(box.br())) {
+                    auto &t = targets[id];
+                    t.trajectories.emplace_back(frame, box);
+                    if (t.trajectories.size() == 1) {
+                        t.snapshot = image(box).clone();
+                        glGenTextures(1, &t.snapshot_tex);
+                        mat_to_texture(t.snapshot, t.snapshot_tex);
+                    }
                 }
             }
+
+            image.copyTo(dets_image);
+            for (auto &d:dets) {
+                draw_bbox(dets_image, d);
+            }
+
+            image.copyTo(trks_image);
+            for (auto &t:trks) {
+                draw_bbox(trks_image, t.box, to_string(t.id));
+            }
+
+            image.copyTo(ret_image);
+            for (auto &[id, t]:targets) {
+                if (t.trajectories.back().first == frame) {
+                    cv::rectangle(ret_image, t.trajectories.back().second, {0, 0, 255});
+                    draw_text(ret_image, to_string(id), {0, 0, 255}, t.trajectories.back().second.tl());
+
+                    for (auto it = t.trajectories.begin(); it + 1 != t.trajectories.end(); ++it) {
+                        auto pt1 = (it->second.tl() + it->second.br()) / 2;
+                        auto pt2 = ((it + 1)->second.tl() + (it + 1)->second.br()) / 2;
+                        cv::line(ret_image, pt1, pt2, {0, 0, 255});
+                    }
+                }
+            }
+
+            ++frame;
         }
 
-        draw_text(origin_image, "FPS: " + to_string(1000 / duration_cast<milliseconds>(end - start).count()),
-                  {255, 255, 255}, cv::Point(origin_image.cols - 1, 0), true);
-        cv::imshow("out", origin_image);
-
-        auto c = char(cv::waitKey(1));
-        if (c == ' ') {
-            cv::waitKey(0);
-        } else if (c == 'q') {
-            break;
+        if (show_dets_window) {
+            mat_to_texture(dets_image, texture[0]);
+            image_window("Detection", texture[0], &show_dets_window);
         }
-//        cv::waitKey(0);
+
+        if (show_trks_window) {
+            mat_to_texture(trks_image, texture[1]);
+            image_window("Tracking", texture[1], &show_trks_window);
+        }
+
+        if (show_res_window) {
+            mat_to_texture(ret_image, texture[2]);
+            image_window("Result", texture[2], &show_res_window);
+        }
+
+        if (show_target_window) {
+            ImGui::Begin("Targets", &show_target_window, ImGuiWindowFlags_AlwaysAutoResize);
+            ImGui::BeginGroup();
+            for (auto &[id, t]:targets) {
+                if (t.snapshot.empty()) continue;
+                ImGui::PushID(id);
+                ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
+                ImGui::SameLine();
+                ImGui::BeginGroup();
+                ImGui::Text("ID: %d", id);
+                ImGui::Text("Start: %d", t.trajectories.front().first);
+                ImGui::Text("End: %d", t.trajectories.back().first);
+                ImGui::EndGroup();
+                ImGui::PopID();
+            }
+            ImGui::EndGroup();
+            ImGui::End();
+        }
+
+        // Rendering
+        ImGui::Render();
+        int display_w, display_h;
+        glfwMakeContextCurrent(window);
+        glfwGetFramebufferSize(window, &display_w, &display_h);
+        glViewport(0, 0, display_w, display_h);
+        glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        glfwMakeContextCurrent(window);
+        glfwSwapBuffers(window);
     }
+
+    // Cleanup
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
 
     return 0;
 }

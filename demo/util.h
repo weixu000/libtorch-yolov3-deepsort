@@ -57,17 +57,9 @@ inline void draw_text(cv::Mat &img, const std::string &str,
     cv::putText(img, str, bottom_left, cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255) - color);
 }
 
-template<typename TLabelFn, typename TColorFn>
-inline void draw_bbox(cv::Mat &img, torch::Tensor bbox, TLabelFn label_fn, TColorFn color_fn) {
-    auto bbox_acc = bbox.accessor<float, 2>();
-    for (int64_t i = 0; i < bbox_acc.size(0); ++i) {
-        auto p1 = cv::Point(bbox_acc[i][0], bbox_acc[i][1]);
-        auto p2 = cv::Point(bbox_acc[i][2], bbox_acc[i][3]);
-        cv::rectangle(img, p1, p2, color_fn(i));
-
-        auto label = label_fn(i);
-        if (!label.empty()) {
-            draw_text(img, label, color_fn(i), p1);
-        }
+inline void draw_bbox(cv::Mat &img, cv::Rect2f bbox, const string &label = "", const cv::Scalar &color = {0, 0, 255}) {
+    cv::rectangle(img, bbox, color);
+    if (!label.empty()) {
+        draw_text(img, label, color, bbox.tl());
     }
 }
