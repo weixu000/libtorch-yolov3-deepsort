@@ -115,7 +115,7 @@ vector<Track> Tracker::update(const vector<Rect2f> &dets) {
     for (auto &t : trackers) {
         Track res;
         res.box = t.get_state();
-        res.id = t.id + 1;
+        res.id = t.id;
         ret.push_back(res);
     }
     return ret;
