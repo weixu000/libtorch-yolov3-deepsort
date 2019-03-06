@@ -164,16 +164,20 @@ int main(int argc, const char *argv[]) {
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);
 
+        static auto frame = 0;
+
+        static vector<cv::Rect2f> dets;
+        static vector<Track> trks;
+
         static cv::Mat image(orig_dim[0], orig_dim[1], CV_8UC3, {0, 0, 0});
         static cv::Mat dets_image = image.clone();
         static cv::Mat trks_image = image.clone();
         static cv::Mat ret_image = image.clone();
 
         if ((playing || next) && cap.read(image)) {
-            auto dets = detector.detect(image);
-            auto trks = tracker.update(dets);
+            dets = detector.detect(image);
+            trks = tracker.update(dets);
 
-            static auto frame = 0;
             for (auto &[id, box]:trks) {
                 if (targets.count(id)) {
                     targets[id].trajectories.emplace_back(frame, box);
@@ -182,59 +186,64 @@ int main(int argc, const char *argv[]) {
                 }
             }
 
+            ++frame;
+        }
+
+        int64_t hovered = -1;
+        if (show_target_window) {
+            ImGui::Begin("Targets", &show_target_window, ImGuiWindowFlags_AlwaysAutoResize);
+            for (auto &[id, t]:targets) {
+                if (t.snapshot.empty()) continue;
+                ImGui::PushID(id);
+                ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("ID: %d", id);
+                    ImGui::Text("Start: %d", t.trajectories.front().first);
+                    ImGui::Text("End: %d", t.trajectories.back().first);
+                    ImGui::EndTooltip();
+                    hovered = id;
+                }
+                ImGui::PopID();
+            }
+            ImGui::End();
+        }
+
+        if (show_dets_window) {
             image.copyTo(dets_image);
             for (auto &d:dets) {
                 draw_bbox(dets_image, d);
             }
-
-            image.copyTo(trks_image);
-            for (auto &t:trks) {
-                draw_bbox(trks_image, t.box, to_string(t.id));
-            }
-
-            image.copyTo(ret_image);
-            for (auto &[id, t]:targets) {
-                if (t.trajectories.back().first == frame) {
-                    draw_bbox(ret_image, t.trajectories.back().second, to_string(id));
-                    draw_trajectories(ret_image, t.trajectories);
-                }
-            }
-
-            ++frame;
-        }
-
-        if (show_dets_window) {
             mat_to_texture(dets_image, texture[0]);
             image_window("Detection", texture[0], &show_dets_window);
         }
 
         if (show_trks_window) {
+            image.copyTo(trks_image);
+            for (auto &t:trks) {
+                draw_bbox(trks_image, t.box, to_string(t.id));
+            }
             mat_to_texture(trks_image, texture[1]);
             image_window("Tracking", texture[1], &show_trks_window);
         }
 
         if (show_res_window) {
+            image.copyTo(ret_image);
+            for (auto &[id, t]:targets) {
+                if (t.trajectories.back().first == frame - 1) {
+                    cv::Scalar color;
+                    if (id == hovered) {
+                        color = {0, 0, 255};
+                    } else {
+                        color = {0, 0, 0};
+                    }
+
+                    draw_bbox(ret_image, t.trajectories.back().second, to_string(id), color);
+                    draw_trajectories(ret_image, t.trajectories, color);
+                }
+            }
             mat_to_texture(ret_image, texture[2]);
             image_window("Result", texture[2], &show_res_window);
-        }
-
-        if (show_target_window) {
-            ImGui::Begin("Targets", &show_target_window, ImGuiWindowFlags_AlwaysAutoResize);
-            ImGui::BeginGroup();
-            for (auto &[id, t]:targets) {
-                if (t.snapshot.empty()) continue;
-                ImGui::PushID(id);
-                ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
-                ImGui::SameLine();
-                ImGui::BeginGroup();
-                ImGui::Text("ID: %d", id);
-                ImGui::Text("Start: %d", t.trajectories.front().first);
-                ImGui::Text("End: %d", t.trajectories.back().first);
-                ImGui::EndGroup();
-                ImGui::PopID();
-            }
-            ImGui::EndGroup();
-            ImGui::End();
         }
 
         // Rendering
