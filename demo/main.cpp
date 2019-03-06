@@ -21,15 +21,10 @@
 #include "Detector.h"
 #include "util.h"
 #include "Tracker.h"
+#include "Target.h"
 
 using namespace std;
 using namespace std::chrono;
-
-struct Target {
-    vector<pair<int, cv::Rect2f>> trajectories;
-    cv::Mat snapshot;
-    GLuint snapshot_tex;
-};
 
 static void glfw_error_callback(int error, const char *description) {
     cerr << "Glfw Error" << error << ": " << description << endl;
@@ -96,20 +91,6 @@ static GLFWwindow *setup_UI() {
     return window;
 }
 
-static void mat_to_texture(const cv::Mat &mat, GLuint texture) {
-    assert(mat.isContinuous());
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0,
-                 GL_RGB,
-                 mat.cols, mat.rows,
-                 0,
-                 GL_BGR, GL_UNSIGNED_BYTE, mat.data);
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
 
 static std::array<int64_t, 2> orig_dim, inp_dim;
 
@@ -194,12 +175,10 @@ int main(int argc, const char *argv[]) {
 
             static auto frame = 0;
             for (auto &[id, box]:trks) {
-                auto &t = targets[id];
-                t.trajectories.emplace_back(frame, box);
-                if (t.trajectories.size() == 1) {
-                    t.snapshot = image(box).clone();
-                    glGenTextures(1, &t.snapshot_tex);
-                    mat_to_texture(t.snapshot, t.snapshot_tex);
+                if (targets.count(id)) {
+                    targets[id].trajectories.emplace_back(frame, box);
+                } else {
+                    targets.emplace(id, Target(make_pair(frame, box), image(box).clone()));
                 }
             }
 
@@ -216,14 +195,8 @@ int main(int argc, const char *argv[]) {
             image.copyTo(ret_image);
             for (auto &[id, t]:targets) {
                 if (t.trajectories.back().first == frame) {
-                    cv::rectangle(ret_image, t.trajectories.back().second, {0, 0, 255});
-                    draw_text(ret_image, to_string(id), {0, 0, 255}, t.trajectories.back().second.tl());
-
-                    for (auto it = t.trajectories.begin(); it + 1 != t.trajectories.end(); ++it) {
-                        auto pt1 = (it->second.tl() + it->second.br()) / 2;
-                        auto pt2 = ((it + 1)->second.tl() + (it + 1)->second.br()) / 2;
-                        cv::line(ret_image, pt1, pt2, {0, 0, 255});
-                    }
+                    draw_bbox(ret_image, t.trajectories.back().second, to_string(id));
+                    draw_trajectories(ret_image, t.trajectories);
                 }
             }
 

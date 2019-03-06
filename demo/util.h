@@ -1,3 +1,6 @@
+#ifndef UTIL_H
+#define UTIL_H
+
 #include <fstream>
 #include <string>
 #include <vector>
@@ -63,3 +66,30 @@ inline void draw_bbox(cv::Mat &img, cv::Rect2f bbox, const string &label = "", c
         draw_text(img, label, color, bbox.tl());
     }
 }
+
+void mat_to_texture(const cv::Mat &mat, GLuint texture) {
+    assert(mat.isContinuous());
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0,
+                 GL_RGB,
+                 mat.cols, mat.rows,
+                 0,
+                 GL_BGR, GL_UNSIGNED_BYTE, mat.data);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void draw_trajectories(cv::Mat &img, const std::vector<std::pair<int, cv::Rect2f>> &traj,
+                       const cv::Scalar &color = {0, 0, 255}) {
+    for (auto it = traj.begin(); it + 1 != traj.end(); ++it) {
+        auto box = it->second;
+        auto pt1 = (box.tl() + box.br()) / 2;
+        auto pt2 = (box.tl() + box.br()) / 2;
+        cv::line(img, pt1, pt2, color);
+    }
+}
+
+#endif //UTIL_H
