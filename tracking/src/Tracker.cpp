@@ -113,10 +113,11 @@ vector<Track> Tracker::update(const vector<Rect2f> &dets) {
 
     vector<Track> ret;
     for (auto &t : trackers) {
-        Track res;
-        res.box = t.get_state();
-        res.id = t.id;
-        ret.push_back(res);
+        auto bbox = t.get_state();
+        if (img_box.contains(bbox.tl()) && img_box.contains(bbox.br())) {
+            Track res{t.id, bbox};
+            ret.push_back(res);
+        }
     }
     return ret;
 }

@@ -111,7 +111,7 @@ static void mat_to_texture(const cv::Mat &mat, GLuint texture) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-static int64_t orig_dim[2], inp_dim[2];
+static std::array<int64_t, 2> orig_dim, inp_dim;
 
 static void image_window(const char *name, GLuint texture,
                          bool *p_open = __null) {
@@ -133,14 +133,14 @@ int main(int argc, const char *argv[]) {
         return -2;
     }
 
-    orig_dim[0] = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
-    orig_dim[1] = cap.get(cv::CAP_PROP_FRAME_WIDTH);
+    orig_dim[0] = static_cast<int64_t>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+    orig_dim[1] = static_cast<int64_t>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
     for (size_t i = 0; i < 2; ++i) {
         auto factor = 1 << 5;
         inp_dim[i] = (orig_dim[i] / 3 / factor + 1) * factor;
     }
     Detector detector(inp_dim);
-    Tracker tracker;
+    Tracker tracker(orig_dim);
 
     auto window = setup_UI();
     if (!window) {
@@ -193,16 +193,13 @@ int main(int argc, const char *argv[]) {
             auto trks = tracker.update(dets);
 
             static auto frame = 0;
-            cv::Rect2f rec(0, 0, image.cols, image.rows);
             for (auto &[id, box]:trks) {
-                if (rec.contains(box.tl()) && rec.contains(box.br())) {
-                    auto &t = targets[id];
-                    t.trajectories.emplace_back(frame, box);
-                    if (t.trajectories.size() == 1) {
-                        t.snapshot = image(box).clone();
-                        glGenTextures(1, &t.snapshot_tex);
-                        mat_to_texture(t.snapshot, t.snapshot_tex);
-                    }
+                auto &t = targets[id];
+                t.trajectories.emplace_back(frame, box);
+                if (t.trajectories.size() == 1) {
+                    t.snapshot = image(box).clone();
+                    glGenTextures(1, &t.snapshot_tex);
+                    mat_to_texture(t.snapshot, t.snapshot_tex);
                 }
             }
 
