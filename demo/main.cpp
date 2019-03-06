@@ -78,7 +78,6 @@ static GLFWwindow *setup_UI() {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGui::GetIO().IniFilename = nullptr;
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -90,7 +89,6 @@ static GLFWwindow *setup_UI() {
 
     return window;
 }
-
 
 static std::array<int64_t, 2> orig_dim, inp_dim;
 
@@ -191,9 +189,12 @@ int main(int argc, const char *argv[]) {
 
         int64_t hovered = -1;
         if (show_target_window) {
-            ImGui::Begin("Targets", &show_target_window, ImGuiWindowFlags_AlwaysAutoResize);
-            for (auto &[id, t]:targets) {
-                if (t.snapshot.empty()) continue;
+            ImVec2 img_sz{50, 50};
+            ImGui::Begin("Targets", &show_target_window);
+            auto &style = ImGui::GetStyle();
+            float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+            for (auto it = targets.begin(); it != targets.end(); ++it) {
+                auto &[id, t] = *it;
                 ImGui::PushID(id);
                 ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
                 if (ImGui::IsItemHovered()) {
@@ -205,6 +206,12 @@ int main(int argc, const char *argv[]) {
                     hovered = id;
                 }
                 ImGui::PopID();
+
+                auto last_x2 = ImGui::GetItemRectMax().x;
+                auto next_x2 = last_x2 + style.ItemSpacing.x
+                               + img_sz.x; // Expected position if next button was on same line
+                if (it != --targets.end() && next_x2 < window_visible_x2)
+                    ImGui::SameLine();
             }
             ImGui::End();
         }
