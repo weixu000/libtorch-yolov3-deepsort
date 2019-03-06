@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <opencv2/opencv.hpp>
 
 #include "imgui/imgui.h"
@@ -197,7 +198,8 @@ int main(int argc, const char *argv[]) {
             ++frame;
         }
 
-        int64_t hovered = -1;
+        int hovered = -1;
+        vector<size_t> tgt_del;
         if (show_target_window) {
             ImVec2 img_sz{50, 50};
             ImGui::Begin("Targets", &show_target_window);
@@ -214,6 +216,12 @@ int main(int argc, const char *argv[]) {
                     ImGui::EndTooltip();
                     hovered = i;
                 }
+                if (ImGui::BeginPopupContextItem("target menu")) {
+                    if (ImGui::Selectable("Delete")) {
+                        tgt_del.push_back(i);
+                    }
+                    ImGui::EndPopup();
+                }
                 ImGui::PopID();
 
                 auto last_x2 = ImGui::GetItemRectMax().x;
@@ -223,6 +231,15 @@ int main(int argc, const char *argv[]) {
                     ImGui::SameLine();
             }
             ImGui::End();
+
+            for (auto i:tgt_del) {
+                targets.erase(targets.begin() + i); // delete the target
+
+                find_if(trk_tgt_map.begin(), trk_tgt_map.end(),
+                        [i](const pair<int, int> &x) {
+                            return x.second == i;
+                        })->second = -1; // discard the track
+            }
         }
 
         if (show_dets_window) {
