@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 #include <opencv2/opencv.hpp>
-#include <torch/torch.h>
 #include <sstream>
 
 using ClassList=std::vector<std::string>;
@@ -67,7 +66,7 @@ inline void draw_bbox(cv::Mat &img, cv::Rect2f bbox, const string &label = "", c
     }
 }
 
-void mat_to_texture(const cv::Mat &mat, GLuint texture) {
+inline void mat_to_texture(const cv::Mat &mat, GLuint texture) {
     assert(mat.isContinuous());
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
@@ -82,14 +81,40 @@ void mat_to_texture(const cv::Mat &mat, GLuint texture) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void draw_trajectories(cv::Mat &img, const std::vector<std::pair<int, cv::Rect2f>> &traj,
-                       const cv::Scalar &color = {0, 0, 255}) {
-    for (auto it = traj.begin(); it + 1 != traj.end(); ++it) {
-        auto box = it->second;
-        auto pt1 = (box.tl() + box.br()) / 2;
-        auto pt2 = (box.tl() + box.br()) / 2;
+inline void draw_trajectories(cv::Mat &img, const std::vector<std::pair<int, cv::Rect2f>> &traj,
+                              float w, float h,
+                              const cv::Scalar &color = {0, 0, 255}) {
+    if (traj.size() < 2) return;
+
+    auto cur = traj.begin()->second;
+    auto pt1 = (cur.tl() + cur.br()) / 2;
+    pt1.x *= w;
+    pt1.y *= h;
+
+    for (auto it = traj.begin() + 1; it != traj.end(); ++it) {
+        cur = it->second;
+        auto pt2 = (cur.tl() + cur.br()) / 2;
+        pt2.x *= w;
+        pt2.y *= h;
         cv::line(img, pt1, pt2, color);
+        pt1 = pt2;
     }
+}
+
+inline cv::Rect2f normalize_rect(cv::Rect2f rect, float w, float h) {
+    rect.x /= w;
+    rect.y /= h;
+    rect.width /= w;
+    rect.height /= h;
+    return rect;
+}
+
+inline cv::Rect2f unnormalize_rect(cv::Rect2f rect, float w, float h) {
+    rect.x *= w;
+    rect.y *= h;
+    rect.width *= w;
+    rect.height *= h;
+    return rect;
 }
 
 #endif //UTIL_H

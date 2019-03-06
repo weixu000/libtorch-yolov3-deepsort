@@ -92,12 +92,13 @@ static GLFWwindow *setup_UI() {
 
 static std::array<int64_t, 2> orig_dim, inp_dim;
 
-static void image_window(const char *name, GLuint texture,
-                         bool *p_open = __null) {
+static ImVec2 image_window(const char *name, GLuint texture,
+                           bool *p_open = __null) {
     ImGui::SetNextWindowSizeConstraints({inp_dim[1], inp_dim[0]}, {orig_dim[1], orig_dim[0]});
     ImGui::Begin(name, p_open);
     ImGui::Image(reinterpret_cast<ImTextureID>(texture), ImGui::GetContentRegionAvail());
     ImGui::End();
+    return ImGui::GetContentRegionAvail(); // return size for image uploading
 }
 
 int main(int argc, const char *argv[]) {
@@ -168,19 +169,27 @@ int main(int argc, const char *argv[]) {
         static vector<Track> trks;
 
         static cv::Mat image(orig_dim[0], orig_dim[1], CV_8UC3, {0, 0, 0});
-        static cv::Mat dets_image = image.clone();
-        static cv::Mat trks_image = image.clone();
-        static cv::Mat ret_image = image.clone();
 
         if ((playing || next) && cap.read(image)) {
             dets = detector.detect(image);
             trks = tracker.update(dets);
 
+            // save normalized boxes
+            for (auto &d:dets) {
+                d = normalize_rect(d, orig_dim[1], orig_dim[0]);
+            }
+
+            for (auto &[id, t]:trks) {
+                t = normalize_rect(t, orig_dim[1], orig_dim[0]);
+            }
+
             for (auto &[id, box]:trks) {
                 if (targets.count(id)) {
                     targets[id].trajectories.emplace_back(frame, box);
                 } else {
-                    targets.emplace(id, Target(make_pair(frame, box), image(box).clone()));
+                    targets.emplace(id,
+                                    Target(make_pair(frame, box),
+                                           image(unnormalize_rect(box, orig_dim[1], orig_dim[0])).clone()));
                 }
             }
 
@@ -217,40 +226,44 @@ int main(int argc, const char *argv[]) {
         }
 
         if (show_dets_window) {
-            image.copyTo(dets_image);
+            auto size = image_window("Detection", texture[0], &show_dets_window);
+            cv::Mat dets_image;
+            cv::resize(image, dets_image, {size[0], size[1]});
             for (auto &d:dets) {
-                draw_bbox(dets_image, d);
+                draw_bbox(dets_image, unnormalize_rect(d, size[0], size[1]));
             }
             mat_to_texture(dets_image, texture[0]);
-            image_window("Detection", texture[0], &show_dets_window);
         }
 
         if (show_trks_window) {
-            image.copyTo(trks_image);
+            auto size = image_window("Tracking", texture[1], &show_trks_window);
+            cv::Mat trks_image;
+            cv::resize(image, trks_image, {size[0], size[1]});
             for (auto &t:trks) {
-                draw_bbox(trks_image, t.box, to_string(t.id));
+                draw_bbox(trks_image, unnormalize_rect(t.box, size[0], size[1]));
             }
             mat_to_texture(trks_image, texture[1]);
-            image_window("Tracking", texture[1], &show_trks_window);
         }
 
         if (show_res_window) {
-            image.copyTo(ret_image);
+            auto size = image_window("Result", texture[2], &show_res_window);
+            cv::Mat ret_image;
+            cv::resize(image, ret_image, {size[0], size[1]});
             for (auto &[id, t]:targets) {
                 if (t.trajectories.back().first == frame - 1) {
                     cv::Scalar color;
                     if (id == hovered) {
                         color = {0, 0, 255};
+                        draw_trajectories(ret_image, t.trajectories, size[0], size[1], color);
                     } else {
                         color = {0, 0, 0};
                     }
 
-                    draw_bbox(ret_image, t.trajectories.back().second, to_string(id), color);
-                    draw_trajectories(ret_image, t.trajectories, color);
+                    draw_bbox(ret_image, unnormalize_rect(t.trajectories.back().second, size[0], size[1]),
+                              to_string(id), color);
                 }
             }
             mat_to_texture(ret_image, texture[2]);
-            image_window("Result", texture[2], &show_res_window);
         }
 
         // Rendering
