@@ -128,7 +128,8 @@ int main(int argc, const char *argv[]) {
         return -1;
     }
 
-    std::map<int, Target> targets;
+    std::vector<Target> targets;
+    std::map<int, int> trk_tgt_map;
 
     GLuint texture[3];
     glGenTextures(sizeof(texture) / sizeof(texture), texture);
@@ -179,17 +180,17 @@ int main(int argc, const char *argv[]) {
                 d = normalize_rect(d, orig_dim[1], orig_dim[0]);
             }
 
-            for (auto &[id, t]:trks) {
-                t = normalize_rect(t, orig_dim[1], orig_dim[0]);
+            for (auto &t:trks) {
+                t.box = normalize_rect(t.box, orig_dim[1], orig_dim[0]);
             }
 
             for (auto &[id, box]:trks) {
-                if (targets.count(id)) {
-                    targets[id].trajectories.emplace_back(frame, box);
-                } else {
-                    targets.emplace(id,
-                                    Target(make_pair(frame, box),
-                                           image(unnormalize_rect(box, orig_dim[1], orig_dim[0])).clone()));
+                if (!trk_tgt_map.count(id)) { // new track is target
+                    trk_tgt_map.emplace(id, targets.size());
+                    targets.emplace_back(make_pair(frame, box),
+                                         image(unnormalize_rect(box, orig_dim[1], orig_dim[0])).clone());
+                } else if (trk_tgt_map[id] != -1) { // add track to target
+                    targets[trk_tgt_map[id]].trajectories.emplace_back(frame, box);
                 }
             }
 
@@ -202,24 +203,23 @@ int main(int argc, const char *argv[]) {
             ImGui::Begin("Targets", &show_target_window);
             auto &style = ImGui::GetStyle();
             float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-            for (auto it = targets.begin(); it != targets.end(); ++it) {
-                auto &[id, t] = *it;
-                ImGui::PushID(id);
+            for (size_t i = 0; i < targets.size(); ++i) {
+                auto &t = targets[i];
+                ImGui::PushID(i);
                 ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
                 if (ImGui::IsItemHovered()) {
                     ImGui::BeginTooltip();
-                    ImGui::Text("ID: %d", id);
                     ImGui::Text("Start: %d", t.trajectories.front().first);
                     ImGui::Text("End: %d", t.trajectories.back().first);
                     ImGui::EndTooltip();
-                    hovered = id;
+                    hovered = i;
                 }
                 ImGui::PopID();
 
                 auto last_x2 = ImGui::GetItemRectMax().x;
                 auto next_x2 = last_x2 + style.ItemSpacing.x
                                + img_sz.x; // Expected position if next button was on same line
-                if (it != --targets.end() && next_x2 < window_visible_x2)
+                if (i != targets.size() - 1 && next_x2 < window_visible_x2)
                     ImGui::SameLine();
             }
             ImGui::End();
@@ -249,10 +249,11 @@ int main(int argc, const char *argv[]) {
             auto size = image_window("Result", texture[2], &show_res_window);
             cv::Mat ret_image;
             cv::resize(image, ret_image, {size[0], size[1]});
-            for (auto &[id, t]:targets) {
+            for (size_t i = 0; i < targets.size(); ++i) {
+                auto &t = targets[i];
                 if (t.trajectories.back().first == frame - 1) {
                     cv::Scalar color;
-                    if (id == hovered) {
+                    if (i == hovered) {
                         color = {0, 0, 255};
                         draw_trajectories(ret_image, t.trajectories, size[0], size[1], color);
                     } else {
@@ -260,7 +261,7 @@ int main(int argc, const char *argv[]) {
                     }
 
                     draw_bbox(ret_image, unnormalize_rect(t.trajectories.back().second, size[0], size[1]),
-                              to_string(id), color);
+                              to_string(i), color);
                 }
             }
             mat_to_texture(ret_image, texture[2]);
