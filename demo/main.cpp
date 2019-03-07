@@ -91,11 +91,8 @@ static GLFWwindow *setup_UI() {
     return window;
 }
 
-static std::array<int64_t, 2> orig_dim, inp_dim;
-
 static ImVec2 image_window(const char *name, GLuint texture,
                            bool *p_open = __null) {
-    ImGui::SetNextWindowSizeConstraints({inp_dim[1], inp_dim[0]}, {orig_dim[1], orig_dim[0]});
     ImGui::Begin(name, p_open);
     ImGui::Image(reinterpret_cast<ImTextureID>(texture), ImGui::GetContentRegionAvail());
     ImGui::End();
@@ -171,11 +168,11 @@ int main(int argc, const char *argv[]) {
         return -2;
     }
 
-    orig_dim[0] = static_cast<int64_t>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
-    orig_dim[1] = static_cast<int64_t>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
+    std::array<int64_t, 2> orig_dim{cap.get(cv::CAP_PROP_FRAME_HEIGHT), cap.get(cv::CAP_PROP_FRAME_WIDTH)};
+    static std::array<int64_t, 2> inp_dim;
     for (size_t i = 0; i < 2; ++i) {
         auto factor = 1 << 5;
-        inp_dim[i] = (orig_dim[i] / 3 / factor + 1) * factor;
+        inp_dim[i] = (orig_dim[i] / factor + 1) * factor;
     }
     Detector detector(inp_dim);
     Tracker tracker(orig_dim);
@@ -221,7 +218,8 @@ int main(int argc, const char *argv[]) {
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);
 
-        if ((playing || next) && cap.read(image)) {
+        if ((playing || next) && cap.grab()) {
+            cap.retrieve(image);
             dets = detector.detect(image);
             trks = tracker.update(dets);
 
