@@ -102,6 +102,63 @@ static ImVec2 image_window(const char *name, GLuint texture,
     return ImGui::GetContentRegionAvail(); // return size for image uploading
 }
 
+static vector<Target> targets;
+static map<int, int> trk_tgt_map;
+
+static vector<cv::Rect2f> dets;
+static vector<Track> trks;
+
+static auto frame = 0;
+
+static cv::Mat image;
+
+static void draw_dets_window(GLuint tex, bool *p_open = __null) {
+    auto size = image_window("Detection", tex, p_open);
+    cv::Mat dets_image;
+    cv::resize(image, dets_image, {size[0], size[1]});
+    for (auto &d:dets) {
+        draw_bbox(dets_image, unnormalize_rect(d, size[0], size[1]));
+    }
+    mat_to_texture(dets_image, tex);
+}
+
+static void draw_trks_window(GLuint tex, bool *p_open = __null) {
+    auto size = image_window("Tracking", tex, p_open);
+    cv::Mat trks_image;
+    cv::resize(image, trks_image, {size[0], size[1]});
+    for (auto &t:trks) {
+        draw_bbox(trks_image, unnormalize_rect(t.box, size[0], size[1]), to_string(t.id));
+    }
+    mat_to_texture(trks_image, tex);
+}
+
+static void draw_res_window(GLuint tex, int hovered, bool *p_open = __null) {
+    auto size = image_window("Result", tex, p_open);
+    cv::Mat ret_image;
+    cv::resize(image, ret_image, {size[0], size[1]});
+    for (size_t i = 0; i < targets.size(); ++i) {
+        auto &t = targets[i];
+        if (t.trajectories.back().first == frame - 1) {
+            cv::Scalar color;
+            if (i == hovered) {
+                color = {0, 0, 255};
+                draw_trajectories(ret_image, t.trajectories, size[0], size[1], color);
+            } else {
+                color = {0, 0, 0};
+            }
+
+            draw_bbox(ret_image, unnormalize_rect(t.trajectories.back().second, size[0], size[1]),
+                      to_string(i), color);
+        } else if (i == hovered) {
+            cv::Scalar color{255, 0, 0};
+            draw_trajectories(ret_image, t.trajectories, size[0], size[1], color);
+            draw_bbox(ret_image, unnormalize_rect(t.trajectories.back().second, size[0], size[1]),
+                      to_string(i), color);
+        }
+    }
+    mat_to_texture(ret_image, tex);
+}
+
 int main(int argc, const char *argv[]) {
     if (argc != 2) {
         cerr << "usage: yolo-app <image path>" << endl;
@@ -123,14 +180,13 @@ int main(int argc, const char *argv[]) {
     Detector detector(inp_dim);
     Tracker tracker(orig_dim);
 
+    image = cv::Mat(orig_dim[0], orig_dim[1], CV_8UC3, {0, 0, 0});
+
     auto window = setup_UI();
     if (!window) {
         cerr << "GUI failed" << endl;
         return -1;
     }
-
-    std::vector<Target> targets;
-    std::map<int, int> trk_tgt_map;
 
     GLuint texture[3];
     glGenTextures(sizeof(texture) / sizeof(texture), texture);
@@ -164,13 +220,6 @@ int main(int argc, const char *argv[]) {
 
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);
-
-        static auto frame = 0;
-
-        static vector<cv::Rect2f> dets;
-        static vector<Track> trks;
-
-        static cv::Mat image(orig_dim[0], orig_dim[1], CV_8UC3, {0, 0, 0});
 
         if ((playing || next) && cap.read(image)) {
             dets = detector.detect(image);
@@ -216,6 +265,7 @@ int main(int argc, const char *argv[]) {
                     ImGui::EndTooltip();
                     hovered = i;
                 }
+
                 if (ImGui::BeginPopupContextItem("target menu")) {
                     if (ImGui::Selectable("Delete")) {
                         tgt_del.push_back(i);
@@ -242,47 +292,14 @@ int main(int argc, const char *argv[]) {
             }
         }
 
-        if (show_dets_window) {
-            auto size = image_window("Detection", texture[0], &show_dets_window);
-            cv::Mat dets_image;
-            cv::resize(image, dets_image, {size[0], size[1]});
-            for (auto &d:dets) {
-                draw_bbox(dets_image, unnormalize_rect(d, size[0], size[1]));
-            }
-            mat_to_texture(dets_image, texture[0]);
-        }
+        if (show_dets_window)
+            draw_dets_window(texture[0], &show_dets_window);
 
-        if (show_trks_window) {
-            auto size = image_window("Tracking", texture[1], &show_trks_window);
-            cv::Mat trks_image;
-            cv::resize(image, trks_image, {size[0], size[1]});
-            for (auto &t:trks) {
-                draw_bbox(trks_image, unnormalize_rect(t.box, size[0], size[1]));
-            }
-            mat_to_texture(trks_image, texture[1]);
-        }
+        if (show_trks_window)
+            draw_trks_window(texture[1], &show_trks_window);
 
-        if (show_res_window) {
-            auto size = image_window("Result", texture[2], &show_res_window);
-            cv::Mat ret_image;
-            cv::resize(image, ret_image, {size[0], size[1]});
-            for (size_t i = 0; i < targets.size(); ++i) {
-                auto &t = targets[i];
-                if (t.trajectories.back().first == frame - 1) {
-                    cv::Scalar color;
-                    if (i == hovered) {
-                        color = {0, 0, 255};
-                        draw_trajectories(ret_image, t.trajectories, size[0], size[1], color);
-                    } else {
-                        color = {0, 0, 0};
-                    }
-
-                    draw_bbox(ret_image, unnormalize_rect(t.trajectories.back().second, size[0], size[1]),
-                              to_string(i), color);
-                }
-            }
-            mat_to_texture(ret_image, texture[2]);
-        }
+        if (show_res_window)
+            draw_res_window(texture[2], hovered, &show_res_window);
 
         // Rendering
         ImGui::Render();

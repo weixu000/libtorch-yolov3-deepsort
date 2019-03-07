@@ -59,7 +59,7 @@ inline void draw_text(cv::Mat &img, const std::string &str,
     cv::putText(img, str, bottom_left, cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255) - color);
 }
 
-inline void draw_bbox(cv::Mat &img, cv::Rect2f bbox, const string &label = "", const cv::Scalar &color = {0, 0, 255}) {
+inline void draw_bbox(cv::Mat &img, cv::Rect2f bbox, const string &label = "", const cv::Scalar &color = {0, 0, 0}) {
     cv::rectangle(img, bbox, color);
     if (!label.empty()) {
         draw_text(img, label, color, bbox.tl());
@@ -83,7 +83,7 @@ inline void mat_to_texture(const cv::Mat &mat, GLuint texture) {
 
 inline void draw_trajectories(cv::Mat &img, const std::vector<std::pair<int, cv::Rect2f>> &traj,
                               float w, float h,
-                              const cv::Scalar &color = {0, 0, 255}) {
+                              const cv::Scalar &color = {0, 0, 0}) {
     if (traj.size() < 2) return;
 
     auto cur = traj.begin()->second;
