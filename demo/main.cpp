@@ -272,6 +272,32 @@ int main(int argc, const char *argv[]) {
                     }
                     ImGui::EndPopup();
                 }
+
+                if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                    ImGui::SetDragDropPayload("TARGET_DRAG", &i, sizeof(i));
+                    ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
+                    ImGui::EndDragDropSource();
+                }
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const auto payload = ImGui::AcceptDragDropPayload("TARGET_DRAG")) {
+                        auto drop_i = *(const size_t *) payload->Data;
+                        tgt_del.push_back(drop_i);
+                        find_if(trk_tgt_map.begin(), trk_tgt_map.end(),
+                                [drop_i](const pair<int, int> &x) {
+                                    return x.second == drop_i;
+                                })->second = i; // re-map the track
+                        auto mid = t.trajectories.insert(t.trajectories.end(),
+                                                         targets[drop_i].trajectories.begin(),
+                                                         targets[drop_i].trajectories.end());
+                        inplace_merge(t.trajectories.begin(), mid, t.trajectories.end(),
+                                      [](const Frame &a, const Frame &b) {
+                                          return a.first < b.first;
+                                      });
+                        // TODO: handle different boxes in the same fame
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+
                 ImGui::PopID();
 
                 auto last_x2 = ImGui::GetItemRectMax().x;
@@ -284,7 +310,7 @@ int main(int argc, const char *argv[]) {
 
             for (auto i:tgt_del) {
                 targets.erase(targets.begin() + i); // delete the target
-
+                // TODO: targets' idx will change after erase()
                 find_if(trk_tgt_map.begin(), trk_tgt_map.end(),
                         [i](const pair<int, int> &x) {
                             return x.second == i;
