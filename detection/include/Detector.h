@@ -7,7 +7,7 @@
 class Detector {
 public:
     explicit Detector(torch::IntList _inp_dim = torch::IntList(),
-                      float nms = 0.5f, float confidence = 0.1f);
+                      float nms = 0.5f, float confidence = 0.6f);
 
     std::vector<cv::Rect2f> detect(cv::Mat image);
 

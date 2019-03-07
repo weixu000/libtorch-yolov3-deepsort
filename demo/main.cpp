@@ -238,6 +238,7 @@ int main(int argc, const char *argv[]) {
 
         int hovered = -1;
         vector<TargetRepo::size_type> to_del;
+        vector<std::array<int, 2>> to_merge;
         if (show_target_window) {
             ImVec2 img_sz{50, 50};
             ImGui::Begin("Targets", &show_target_window);
@@ -270,12 +271,10 @@ int main(int argc, const char *argv[]) {
                 if (ImGui::BeginDragDropTarget()) {
                     if (const auto payload = ImGui::AcceptDragDropPayload("TARGET_DRAG")) {
                         auto drop_i = *(const size_t *) payload->Data;
-                        to_del.push_back(drop_i);
-                        repo.merge(i, drop_i);
+                        to_merge.push_back({i, drop_i});
                     }
                     ImGui::EndDragDropTarget();
                 }
-
                 ImGui::PopID();
 
                 auto last_x2 = ImGui::GetItemRectMax().x;
@@ -288,6 +287,9 @@ int main(int argc, const char *argv[]) {
 
             for (auto i:to_del) {
                 repo.erase(i);
+            }
+            for (auto[to, from]:to_merge) {
+                repo.merge(to, from);
             }
         }
 
