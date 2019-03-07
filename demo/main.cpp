@@ -99,8 +99,7 @@ static ImVec2 image_window(const char *name, GLuint texture,
     return ImGui::GetContentRegionAvail(); // return size for image uploading
 }
 
-static vector<Target> targets;
-static map<int, int> trk_tgt_map;
+static TargetRepo repo;
 
 static vector<cv::Rect2f> dets;
 static vector<Track> trks;
@@ -133,8 +132,8 @@ static void draw_res_window(GLuint tex, int hovered, bool *p_open = __null) {
     auto size = image_window("Result", tex, p_open);
     cv::Mat ret_image;
     cv::resize(image, ret_image, {size[0], size[1]});
-    for (size_t i = 0; i < targets.size(); ++i) {
-        auto &t = targets[i];
+    for (size_t i = 0; i < repo.size(); ++i) {
+        auto &t = repo[i];
         if (t.trajectories.back().first == frame - 1) {
             cv::Scalar color;
             if (i == hovered) {
@@ -232,28 +231,20 @@ int main(int argc, const char *argv[]) {
                 t.box = normalize_rect(t.box, orig_dim[1], orig_dim[0]);
             }
 
-            for (auto &[id, box]:trks) {
-                if (!trk_tgt_map.count(id)) { // new track is target
-                    trk_tgt_map.emplace(id, targets.size());
-                    targets.emplace_back(make_pair(frame, box),
-                                         image(unnormalize_rect(box, orig_dim[1], orig_dim[0])).clone());
-                } else if (trk_tgt_map[id] != -1) { // add track to target
-                    targets[trk_tgt_map[id]].trajectories.emplace_back(frame, box);
-                }
-            }
+            repo.update(trks, frame, image);
 
             ++frame;
         }
 
         int hovered = -1;
-        vector<size_t> tgt_del;
+        vector<TargetRepo::size_type> to_del;
         if (show_target_window) {
             ImVec2 img_sz{50, 50};
             ImGui::Begin("Targets", &show_target_window);
             auto &style = ImGui::GetStyle();
             float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-            for (size_t i = 0; i < targets.size(); ++i) {
-                auto &t = targets[i];
+            for (size_t i = 0; i < repo.size(); ++i) {
+                auto &t = repo[i];
                 ImGui::PushID(i);
                 ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
                 if (ImGui::IsItemHovered()) {
@@ -266,7 +257,7 @@ int main(int argc, const char *argv[]) {
 
                 if (ImGui::BeginPopupContextItem("target menu")) {
                     if (ImGui::Selectable("Delete")) {
-                        tgt_del.push_back(i);
+                        to_del.push_back(i);
                     }
                     ImGui::EndPopup();
                 }
@@ -279,19 +270,8 @@ int main(int argc, const char *argv[]) {
                 if (ImGui::BeginDragDropTarget()) {
                     if (const auto payload = ImGui::AcceptDragDropPayload("TARGET_DRAG")) {
                         auto drop_i = *(const size_t *) payload->Data;
-                        tgt_del.push_back(drop_i);
-                        find_if(trk_tgt_map.begin(), trk_tgt_map.end(),
-                                [drop_i](const pair<int, int> &x) {
-                                    return x.second == drop_i;
-                                })->second = i; // re-map the track
-                        auto mid = t.trajectories.insert(t.trajectories.end(),
-                                                         targets[drop_i].trajectories.begin(),
-                                                         targets[drop_i].trajectories.end());
-                        inplace_merge(t.trajectories.begin(), mid, t.trajectories.end(),
-                                      [](const Frame &a, const Frame &b) {
-                                          return a.first < b.first;
-                                      });
-                        // TODO: handle different boxes in the same fame
+                        to_del.push_back(drop_i);
+                        repo.merge(i, drop_i);
                     }
                     ImGui::EndDragDropTarget();
                 }
@@ -301,18 +281,13 @@ int main(int argc, const char *argv[]) {
                 auto last_x2 = ImGui::GetItemRectMax().x;
                 auto next_x2 = last_x2 + style.ItemSpacing.x
                                + img_sz.x; // Expected position if next button was on same line
-                if (i != targets.size() - 1 && next_x2 < window_visible_x2)
+                if (i != repo.size() - 1 && next_x2 < window_visible_x2)
                     ImGui::SameLine();
             }
             ImGui::End();
 
-            for (auto i:tgt_del) {
-                targets.erase(targets.begin() + i); // delete the target
-                // TODO: targets' idx will change after erase()
-                find_if(trk_tgt_map.begin(), trk_tgt_map.end(),
-                        [i](const pair<int, int> &x) {
-                            return x.second == i;
-                        })->second = -1; // discard the track
+            for (auto i:to_del) {
+                repo.erase(i);
             }
         }
 
