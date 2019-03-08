@@ -81,7 +81,7 @@ inline void mat_to_texture(const cv::Mat &mat, GLuint texture) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-inline void draw_trajectories(cv::Mat &img, const std::vector<std::pair<int, cv::Rect2f>> &traj,
+inline void draw_trajectories(cv::Mat &img, const std::map<int, cv::Rect2f> &traj,
                               float w, float h,
                               const cv::Scalar &color = {0, 0, 0}) {
     if (traj.size() < 2) return;
@@ -91,7 +91,7 @@ inline void draw_trajectories(cv::Mat &img, const std::vector<std::pair<int, cv:
     pt1.x *= w;
     pt1.y *= h;
 
-    for (auto it = traj.begin() + 1; it != traj.end(); ++it) {
+    for (auto it = ++traj.begin(); it != traj.end(); ++it) {
         cur = it->second;
         auto pt2 = (cur.tl() + cur.br()) / 2;
         pt2.x *= w;

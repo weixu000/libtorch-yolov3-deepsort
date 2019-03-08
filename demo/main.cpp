@@ -134,7 +134,7 @@ static void draw_res_window(GLuint tex, int hovered, bool *p_open = __null) {
     cv::resize(image, ret_image, {size[0], size[1]});
     for (size_t i = 0; i < repo.size(); ++i) {
         auto &t = repo[i];
-        if (t.trajectories.back().first == frame - 1) {
+        if (t.trajectories.rbegin()->first == frame - 1) {
             cv::Scalar color;
             if (i == hovered) {
                 color = {0, 0, 255};
@@ -143,12 +143,12 @@ static void draw_res_window(GLuint tex, int hovered, bool *p_open = __null) {
                 color = {0, 0, 0};
             }
 
-            draw_bbox(ret_image, unnormalize_rect(t.trajectories.back().second, size[0], size[1]),
+            draw_bbox(ret_image, unnormalize_rect(t.trajectories.rbegin()->second, size[0], size[1]),
                       to_string(i), color);
         } else if (i == hovered) {
             cv::Scalar color{255, 0, 0};
             draw_trajectories(ret_image, t.trajectories, size[0], size[1], color);
-            draw_bbox(ret_image, unnormalize_rect(t.trajectories.back().second, size[0], size[1]),
+            draw_bbox(ret_image, unnormalize_rect(t.trajectories.rbegin()->second, size[0], size[1]),
                       to_string(i), color);
         }
     }
@@ -250,8 +250,8 @@ int main(int argc, const char *argv[]) {
                 ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
                 if (ImGui::IsItemHovered()) {
                     ImGui::BeginTooltip();
-                    ImGui::Text("Start: %d", t.trajectories.front().first);
-                    ImGui::Text("End: %d", t.trajectories.back().first);
+                    ImGui::Text("Start: %d", t.trajectories.begin()->first);
+                    ImGui::Text("End: %d", t.trajectories.rbegin()->first);
                     ImGui::EndTooltip();
                     hovered = i;
                 }

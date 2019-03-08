@@ -14,7 +14,7 @@ struct Target {
 
     explicit Target(const Frame &f, const cv::Mat &ss = cv::Mat())
             : snapshot(ss) {
-        trajectories.push_back(f);
+        trajectories.insert(f);
         if (!snapshot.empty()) {
             glGenTextures(1, &snapshot_tex);
             mat_to_texture(snapshot, snapshot_tex);
@@ -43,7 +43,7 @@ struct Target {
         t.snapshot_tex = 0;
     }
 
-    std::vector<Frame> trajectories;
+    std::map<int, cv::Rect2f> trajectories;
     cv::Mat snapshot;
     GLuint snapshot_tex;
 };
@@ -80,7 +80,7 @@ public:
                 wrap.second = {id};
                 targets.push_back(std::move(wrap));
             } else if (trk_tgt_map[id] != -1) { // add track to target
-                targets[trk_tgt_map[id]].first.trajectories.emplace_back(frame, box);
+                targets[trk_tgt_map[id]].first.trajectories.emplace(frame, box);
             }
         }
     }
@@ -88,17 +88,16 @@ public:
     void merge(size_type to, size_type from) {
         auto &[target_to, trks_to] = targets[to];
         auto &[target_from, trks_from] = targets[from];
-        auto mid = target_to.trajectories.insert(target_to.trajectories.end(),
-                                                 target_from.trajectories.begin(),
-                                                 target_from.trajectories.end());
-        inplace_merge(target_to.trajectories.begin(), mid, target_to.trajectories.end(),
-                      [](const Frame &a, const Frame &b) {
-                          return a.first < b.first;
-                      });
 
+        // merge trajectories
+        // the target merge from has higher priority
+        target_from.trajectories.merge(target_to.trajectories);
+        target_to.trajectories = std::move(target_from.trajectories);
+
+        // merged target should have all tracks
         trks_to.insert(trks_to.end(), trks_from.begin(), trks_from.end());
+
         targets.erase(targets.begin() + from);
-        // TODO: handle different boxes in the same fame
     }
 
     void erase(size_type idx) {
