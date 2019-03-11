@@ -21,7 +21,6 @@
 
 #include "Detector.h"
 #include "util.h"
-#include "Tracker.h"
 #include "Target.h"
 
 using namespace std;
@@ -91,45 +90,10 @@ static GLFWwindow *setup_UI() {
     return window;
 }
 
-static ImVec2 image_window(const char *name, GLuint texture,
-                           bool *p_open = __null) {
-    ImGui::Begin(name, p_open);
-    ImGui::Image(reinterpret_cast<ImTextureID>(texture), ImGui::GetContentRegionAvail());
-    ImGui::End();
-    return ImGui::GetContentRegionAvail(); // return size for image uploading
-}
-
 static TargetRepo repo;
 
-static vector<cv::Rect2f> dets;
-static vector<Track> trks;
-
-static uint32_t display_frame = 0;
-static uint32_t processed_frame = 0;
-
-static cv::Mat image;
-
-static void draw_dets_window(GLuint tex, bool *p_open = __null) {
-    auto size = image_window("Detection", tex, p_open);
-    cv::Mat dets_image;
-    cv::resize(image, dets_image, {size[0], size[1]});
-    for (auto &d:dets) {
-        draw_bbox(dets_image, unnormalize_rect(d, size[0], size[1]));
-    }
-    mat_to_texture(dets_image, tex);
-}
-
-static void draw_trks_window(GLuint tex, bool *p_open = __null) {
-    auto size = image_window("Tracking", tex, p_open);
-    cv::Mat trks_image;
-    cv::resize(image, trks_image, {size[0], size[1]});
-    for (auto &t:trks) {
-        draw_bbox(trks_image, unnormalize_rect(t.box, size[0], size[1]), to_string(t.id));
-    }
-    mat_to_texture(trks_image, tex);
-}
-
-static void draw_res_window(GLuint tex, int hovered, bool *p_open = __null) {
+static void draw_res_window(const cv::Mat &image, uint32_t display_frame, int hovered,
+                            GLuint tex, bool *p_open = __null) {
     auto size = image_window("Result", tex, p_open);
     cv::Mat ret_image;
     cv::resize(image, ret_image, {size[0], size[1]});
@@ -206,9 +170,11 @@ static int draw_target_window(bool *p_open = __null) {
     return hovered;
 }
 
-static void process_frame(const array<int64_t, 2> &orig_dim, Detector &detector, Tracker &tracker) {
-    dets = detector.detect(image);
-    trks = tracker.update(dets);
+static auto process_frame(const cv::Mat &image, Detector &detector, Tracker &tracker, uint32_t processed_frame) {
+    auto dets = detector.detect(image);
+    auto trks = tracker.update(dets);
+
+    array<int64_t, 2> orig_dim{image.rows, image.cols};
 
     // save normalized boxes
     for (auto &d:dets) {
@@ -220,6 +186,8 @@ static void process_frame(const array<int64_t, 2> &orig_dim, Detector &detector,
     }
 
     repo.update(trks, processed_frame, image);
+
+    return make_pair(move(dets), move(trks));
 }
 
 int main(int argc, const char *argv[]) {
@@ -243,7 +211,7 @@ int main(int argc, const char *argv[]) {
     Detector detector(inp_dim);
     Tracker tracker(orig_dim);
 
-    image = cv::Mat(orig_dim[0], orig_dim[1], CV_8UC3, {0, 0, 0});
+    auto image = cv::Mat(orig_dim[0], orig_dim[1], CV_8UC3, {0, 0, 0});
 
     auto window = setup_UI();
     if (!window) {
@@ -268,9 +236,9 @@ int main(int argc, const char *argv[]) {
         static auto show_target_window = true;
         static auto playing = false;
 
-        display_frame = static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES));
+        auto display_frame = static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES));
         static uint32_t frame_min = 0, frame_max = static_cast<uint32_t>(cap.get(cv::CAP_PROP_FRAME_COUNT));
-
+        static uint32_t processed_frame = 0;
 
         ImGui::Begin("Control", nullptr, ImGuiWindowFlags_NoResize);
         ImGui::Text("Framerate: %.1f", ImGui::GetIO().Framerate);
@@ -302,8 +270,14 @@ int main(int argc, const char *argv[]) {
             cap.retrieve(image);
 
             if (processed_frame == display_frame) {
-                process_frame(orig_dim, detector, tracker);
+                auto[dets, trks] = process_frame(image, detector, tracker, processed_frame);
                 processed_frame = static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES));
+
+                if (show_dets_window)
+                    draw_dets_window(image, dets, texture[0], &show_dets_window);
+
+                if (show_trks_window)
+                    draw_trks_window(image, trks, texture[1], &show_trks_window);
             }
         }
 
@@ -311,14 +285,8 @@ int main(int argc, const char *argv[]) {
         if (show_target_window)
             hovered = draw_target_window(&show_target_window);
 
-        if (show_dets_window)
-            draw_dets_window(texture[0], &show_dets_window);
-
-        if (show_trks_window)
-            draw_trks_window(texture[1], &show_trks_window);
-
         if (show_res_window)
-            draw_res_window(texture[2], hovered, &show_res_window);
+            draw_res_window(image, display_frame, hovered, texture[2], &show_res_window);
 
         // Rendering
         ImGui::Render();

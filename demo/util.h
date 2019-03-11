@@ -6,11 +6,13 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 #include <sstream>
+#include <algorithm>
+#include "imgui/imgui.h"
+#include "Detector.h"
+#include "Tracker.h"
 
-using ClassList=std::vector<std::string>;
-
-inline ClassList load_classes(const std::string &path) {
-    ClassList out;
+inline auto load_classes(const std::string &path) {
+    std::vector<std::string> out;
     std::ifstream fp(path);
     while (fp) {
         std::string cls;
@@ -23,24 +25,18 @@ inline ClassList load_classes(const std::string &path) {
     return out;
 }
 
-using ColorMap=std::vector<cv::Scalar>;
-
-inline ColorMap color_map(int64_t n) {
+inline cv::Scalar color_map(int64_t n) {
     auto bit_get = [](int64_t x, int64_t i) { return x & (1 << i); };
-    ColorMap cmap;
 
-    for (int64_t i = 0; i < n; ++i) {
-        int64_t r = 0, g = 0, b = 0;
-        int64_t i_ = i;
-        for (int64_t j = 7; j >= 0; --j) {
-            r |= bit_get(i_, 0) << j;
-            g |= bit_get(i_, 1) << j;
-            b |= bit_get(i_, 2) << j;
-            i_ >>= 3;
-        }
-        cmap.emplace_back(b, g, r);
+    int64_t r = 0, g = 0, b = 0;
+    int64_t i = n;
+    for (int64_t j = 7; j >= 0; --j) {
+        r |= bit_get(i, 0) << j;
+        g |= bit_get(i, 1) << j;
+        b |= bit_get(i, 2) << j;
+        i >>= 3;
     }
-    return cmap;
+    return cv::Scalar(b, g, r);
 }
 
 inline void draw_text(cv::Mat &img, const std::string &str,
@@ -115,6 +111,35 @@ inline cv::Rect2f unnormalize_rect(cv::Rect2f rect, float w, float h) {
     rect.width *= w;
     rect.height *= h;
     return rect;
+}
+
+inline ImVec2 image_window(const char *name, GLuint texture, bool *p_open = __null) {
+    ImGui::Begin(name, p_open);
+    ImGui::Image(reinterpret_cast<ImTextureID>(texture), ImGui::GetContentRegionAvail());
+    ImGui::End();
+    return ImGui::GetContentRegionAvail(); // return size for image uploading
+}
+
+inline void draw_dets_window(const cv::Mat &image, const std::vector<cv::Rect2f> &dets,
+                             GLuint tex, bool *p_open = __null) {
+    auto size = image_window("Detection", tex, p_open);
+    cv::Mat dets_image;
+    resize(image, dets_image, {size[0], size[1]});
+    for (auto &d:dets) {
+        draw_bbox(dets_image, unnormalize_rect(d, size[0], size[1]));
+    }
+    mat_to_texture(dets_image, tex);
+}
+
+inline void draw_trks_window(const cv::Mat &image, const std::vector<Track> &trks,
+                             GLuint tex, bool *p_open = __null) {
+    auto size = image_window("Tracking", tex, p_open);
+    cv::Mat trks_image;
+    resize(image, trks_image, {size[0], size[1]});
+    for (auto &t:trks) {
+        draw_bbox(trks_image, unnormalize_rect(t.box, size[0], size[1]), std::to_string(t.id));
+    }
+    mat_to_texture(trks_image, tex);
 }
 
 #endif //UTIL_H
