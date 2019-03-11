@@ -104,7 +104,8 @@ static TargetRepo repo;
 static vector<cv::Rect2f> dets;
 static vector<Track> trks;
 
-static auto frame = 0;
+static uint32_t display_frame = 0;
+static uint32_t processed_frame = 0;
 
 static cv::Mat image;
 
@@ -134,25 +135,91 @@ static void draw_res_window(GLuint tex, int hovered, bool *p_open = __null) {
     cv::resize(image, ret_image, {size[0], size[1]});
     for (size_t i = 0; i < repo.size(); ++i) {
         auto &t = repo[i];
-        if (t.trajectories.rbegin()->first == frame - 1) {
-            cv::Scalar color;
-            if (i == hovered) {
-                color = {0, 0, 255};
-                draw_trajectories(ret_image, t.trajectories, size[0], size[1], color);
-            } else {
-                color = {0, 0, 0};
-            }
-
-            draw_bbox(ret_image, unnormalize_rect(t.trajectories.rbegin()->second, size[0], size[1]),
-                      to_string(i), color);
-        } else if (i == hovered) {
-            cv::Scalar color{255, 0, 0};
+        if (t.trajectories.count(display_frame)) {
+            auto color = i == hovered ? cv::Scalar(0, 0, 255) : cv::Scalar(0, 0, 0);
             draw_trajectories(ret_image, t.trajectories, size[0], size[1], color);
-            draw_bbox(ret_image, unnormalize_rect(t.trajectories.rbegin()->second, size[0], size[1]),
+            draw_bbox(ret_image, unnormalize_rect(t.trajectories.at(display_frame), size[0], size[1]),
                       to_string(i), color);
         }
     }
     mat_to_texture(ret_image, tex);
+}
+
+static int draw_target_window(bool *p_open = __null) {
+    int hovered = -1;
+
+    vector<TargetRepo::size_type> to_del;
+    vector<std::array<size_t, 2>> to_merge;
+
+    ImVec2 img_sz{50, 50};
+    ImGui::Begin("Targets", p_open);
+    auto &style = ImGui::GetStyle();
+    float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+    for (size_t i = 0; i < repo.size(); ++i) {
+        auto &t = repo[i];
+        ImGui::PushID(i);
+        ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Start: %d", t.trajectories.begin()->first);
+            ImGui::Text("End: %d", t.trajectories.rbegin()->first);
+            ImGui::EndTooltip();
+            hovered = i;
+        }
+
+        if (ImGui::BeginPopupContextItem("target menu")) {
+            if (ImGui::Selectable("Delete")) {
+                to_del.push_back(i);
+            }
+            ImGui::EndPopup();
+        }
+
+        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+            ImGui::SetDragDropPayload("TARGET_DRAG", &i, sizeof(i));
+            ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
+            ImGui::EndDragDropSource();
+        }
+        if (ImGui::BeginDragDropTarget()) {
+            if (const auto payload = ImGui::AcceptDragDropPayload("TARGET_DRAG")) {
+                auto drop_i = *(const size_t *) payload->Data;
+                to_merge.push_back({i, drop_i});
+            }
+            ImGui::EndDragDropTarget();
+        }
+        ImGui::PopID();
+
+        auto last_x2 = ImGui::GetItemRectMax().x;
+        auto next_x2 = last_x2 + style.ItemSpacing.x
+                       + img_sz.x; // Expected position if next button was on same line
+        if (i != repo.size() - 1 && next_x2 < window_visible_x2)
+            ImGui::SameLine();
+    }
+    ImGui::End();
+
+    for (auto i:to_del) {
+        repo.erase(i);
+    }
+    for (auto[to, from]:to_merge) {
+        repo.merge(to, from);
+    }
+
+    return hovered;
+}
+
+static void process_frame(const array<int64_t, 2> &orig_dim, Detector &detector, Tracker &tracker) {
+    dets = detector.detect(image);
+    trks = tracker.update(dets);
+
+    // save normalized boxes
+    for (auto &d:dets) {
+        d = normalize_rect(d, orig_dim[1], orig_dim[0]);
+    }
+
+    for (auto &t:trks) {
+        t.box = normalize_rect(t.box, orig_dim[1], orig_dim[0]);
+    }
+
+    repo.update(trks, processed_frame, image);
 }
 
 int main(int argc, const char *argv[]) {
@@ -201,8 +268,16 @@ int main(int argc, const char *argv[]) {
         static auto show_target_window = true;
         static auto playing = false;
 
+        display_frame = static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES));
+        static uint32_t frame_min = 0, frame_max = static_cast<uint32_t>(cap.get(cv::CAP_PROP_FRAME_COUNT));
+
+
         ImGui::Begin("Control", nullptr, ImGuiWindowFlags_NoResize);
         ImGui::Text("Framerate: %.1f", ImGui::GetIO().Framerate);
+        ImGui::Text("Processing:");
+        ImGui::SameLine();
+        ImGui::ProgressBar(1.0f * processed_frame / frame_max, ImVec2(0.0f, 0.0f),
+                           (to_string(processed_frame) + "/" + to_string(frame_max)).c_str());
         ImGui::Separator();
         ImGui::Checkbox("Show demo window", &show_demo_window);
         ImGui::Checkbox("Show detection window", &show_dets_window);
@@ -211,7 +286,13 @@ int main(int argc, const char *argv[]) {
         ImGui::Checkbox("Show target window", &show_target_window);
         ImGui::Separator();
         ImGui::Checkbox("Playing", &playing);
-        auto next = ImGui::Button("Next");
+        auto next = false;
+        if (ImGui::SliderScalar("Display", ImGuiDataType_U32, &display_frame, &frame_min, &processed_frame,
+                                ("%u/" + to_string(processed_frame)).c_str())) {
+            cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(display_frame));
+            next = true;
+        }
+        next |= ImGui::Button("Next");
         ImGui::End();
 
         if (show_demo_window)
@@ -219,79 +300,16 @@ int main(int argc, const char *argv[]) {
 
         if ((playing || next) && cap.grab()) {
             cap.retrieve(image);
-            dets = detector.detect(image);
-            trks = tracker.update(dets);
 
-            // save normalized boxes
-            for (auto &d:dets) {
-                d = normalize_rect(d, orig_dim[1], orig_dim[0]);
+            if (processed_frame == display_frame) {
+                process_frame(orig_dim, detector, tracker);
+                processed_frame = static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES));
             }
-
-            for (auto &t:trks) {
-                t.box = normalize_rect(t.box, orig_dim[1], orig_dim[0]);
-            }
-
-            repo.update(trks, frame, image);
-
-            ++frame;
         }
 
         int hovered = -1;
-        vector<TargetRepo::size_type> to_del;
-        vector<std::array<int, 2>> to_merge;
-        if (show_target_window) {
-            ImVec2 img_sz{50, 50};
-            ImGui::Begin("Targets", &show_target_window);
-            auto &style = ImGui::GetStyle();
-            float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-            for (size_t i = 0; i < repo.size(); ++i) {
-                auto &t = repo[i];
-                ImGui::PushID(i);
-                ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
-                if (ImGui::IsItemHovered()) {
-                    ImGui::BeginTooltip();
-                    ImGui::Text("Start: %d", t.trajectories.begin()->first);
-                    ImGui::Text("End: %d", t.trajectories.rbegin()->first);
-                    ImGui::EndTooltip();
-                    hovered = i;
-                }
-
-                if (ImGui::BeginPopupContextItem("target menu")) {
-                    if (ImGui::Selectable("Delete")) {
-                        to_del.push_back(i);
-                    }
-                    ImGui::EndPopup();
-                }
-
-                if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-                    ImGui::SetDragDropPayload("TARGET_DRAG", &i, sizeof(i));
-                    ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
-                    ImGui::EndDragDropSource();
-                }
-                if (ImGui::BeginDragDropTarget()) {
-                    if (const auto payload = ImGui::AcceptDragDropPayload("TARGET_DRAG")) {
-                        auto drop_i = *(const size_t *) payload->Data;
-                        to_merge.push_back({i, drop_i});
-                    }
-                    ImGui::EndDragDropTarget();
-                }
-                ImGui::PopID();
-
-                auto last_x2 = ImGui::GetItemRectMax().x;
-                auto next_x2 = last_x2 + style.ItemSpacing.x
-                               + img_sz.x; // Expected position if next button was on same line
-                if (i != repo.size() - 1 && next_x2 < window_visible_x2)
-                    ImGui::SameLine();
-            }
-            ImGui::End();
-
-            for (auto i:to_del) {
-                repo.erase(i);
-            }
-            for (auto[to, from]:to_merge) {
-                repo.merge(to, from);
-            }
-        }
+        if (show_target_window)
+            hovered = draw_target_window(&show_target_window);
 
         if (show_dets_window)
             draw_dets_window(texture[0], &show_dets_window);
