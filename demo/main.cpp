@@ -24,7 +24,6 @@
 #include "Target.h"
 
 using namespace std;
-using namespace std::chrono;
 
 static void glfw_error_callback(int error, const char *description) {
     cerr << "Glfw Error" << error << ": " << description << endl;
