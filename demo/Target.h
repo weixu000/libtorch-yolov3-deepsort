@@ -8,45 +8,44 @@
 
 #include "util.h"
 
-using Frame = std::pair<int, cv::Rect2f>;
-
-struct Target {
-    Target() : snapshot_tex(0) {};
-
-    explicit Target(const Frame &f, const cv::Mat &ss = cv::Mat())
-            : snapshot(ss) {
-        trajectories.insert(f);
-        if (!snapshot.empty()) {
-            glGenTextures(1, &snapshot_tex);
-            mat_to_texture(snapshot, snapshot_tex);
+struct Snapshot {
+    explicit Snapshot(const cv::Mat &mat = cv::Mat())
+            : mat(mat), tex(0) {
+        if (!mat.empty()) {
+            glGenTextures(1, &tex);
+            mat_to_texture(mat, tex);
         }
     }
 
-    ~Target() {
-        glDeleteTextures(1, &snapshot_tex);
+    ~Snapshot() {
+        glDeleteTextures(1, &tex);
     }
 
-    Target(const Target &) = delete;
+    Snapshot(const Snapshot &) = delete;
 
-    Target &operator=(const Target &) = delete;
+    Snapshot &operator=(const Snapshot &) = delete;
 
-    Target(Target &&t)
-            : trajectories(std::move(t.trajectories)),
-              snapshot(std::move(t.snapshot)) {
-        snapshot_tex = t.snapshot_tex;
-        t.snapshot_tex = 0;
+    Snapshot &operator=(Snapshot &&s) {
+        mat = std::move(s.mat);
+        tex = s.tex;
+
+        s.tex = 0;
     }
 
-    Target &operator=(Target &&t) {
-        trajectories = std::move(t.trajectories);
-        snapshot = std::move(t.snapshot);
-        snapshot_tex = t.snapshot_tex;
-        t.snapshot_tex = 0;
+
+    Snapshot(Snapshot &&s)
+            : mat(std::move(s.mat)) {
+        tex = s.tex;
+        s.tex = 0;
     }
 
+    cv::Mat mat;
+    GLuint tex;
+};
+
+struct Target {
     std::map<int, cv::Rect2f> trajectories;
-    cv::Mat snapshot;
-    GLuint snapshot_tex;
+    std::map<int, Snapshot> snapshots;
 };
 
 class TargetRepo {

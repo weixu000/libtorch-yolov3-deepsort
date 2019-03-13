@@ -17,13 +17,18 @@ void TargetRepo::update(const std::vector<Track> &trks, int frame, const cv::Mat
     for (auto &[id, box]:trks) {
         if (!trk_tgt_map.count(id)) { // new track is target
             TargetWrap wrap;
-            wrap.first = Target(std::make_pair(frame, box),
-                                image(unnormalize_rect(pad_rect(box, padding), image.cols,
-                                                       image.rows)).clone());
+            wrap.first.trajectories[frame] = box;
+            wrap.first.snapshots[frame] = std::move(Snapshot(image(unnormalize_rect(pad_rect(box, padding), image.cols,
+                                                                                    image.rows)).clone()));
             wrap.second = {id};
             targets.push_back(std::move(wrap));
         } else if (trk_tgt_map[id] != -1) { // add track to target
-            targets[trk_tgt_map[id]].first.trajectories.emplace(frame, box);
+            auto &t = targets[trk_tgt_map[id]].first;
+            t.trajectories.emplace(frame, box);
+            if (frame - t.snapshots.rbegin()->first > 5) {
+                t.snapshots[frame] = std::move(Snapshot(image(unnormalize_rect(pad_rect(box, padding), image.cols,
+                                                                               image.rows)).clone()));
+            }
         }
     }
 }

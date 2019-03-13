@@ -116,6 +116,9 @@ static auto draw_target_window(bool *p_open = __null) {
     vector<TargetRepo::size_type> to_del;
     vector<std::array<size_t, 2>> to_merge;
 
+    static int hovered_prev = -1;
+    static chrono::steady_clock::time_point hovered_start;
+
     ImGui::Begin("Targets", p_open);
     auto &style = ImGui::GetStyle();
     auto window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
@@ -124,7 +127,19 @@ static auto draw_target_window(bool *p_open = __null) {
         ImGui::PushID(i);
         {
             ImGui::BeginGroup();
-            ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
+            {
+                auto it = t.snapshots.begin();
+                if (hovered_prev == i) {
+                    auto duration = chrono::duration_cast<chrono::milliseconds>(
+                            chrono::steady_clock::now() - hovered_start).count();
+
+                    for (; duration > 100; duration -= 100) {
+                        ++it;
+                        if (it == t.snapshots.end()) it = t.snapshots.begin();
+                    }
+                }
+                ImGui::Image(reinterpret_cast<ImTextureID>(it->second.tex), {50, 50});
+            }
             ImGui::SameLine();
             {
                 ImGui::BeginGroup();
@@ -147,7 +162,7 @@ static auto draw_target_window(bool *p_open = __null) {
 
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
             ImGui::SetDragDropPayload("TARGET_DRAG", &i, sizeof(i));
-            ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshot_tex), {50, 50});
+            ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshots.begin()->second.tex), {50, 50});
             ImGui::EndDragDropSource();
         }
         if (ImGui::BeginDragDropTarget()) {
@@ -172,6 +187,11 @@ static auto draw_target_window(bool *p_open = __null) {
     }
     for (auto[to, from]:to_merge) {
         repo.merge(to, from);
+    }
+
+    if (hovered != hovered_prev) {
+        hovered_prev = hovered;
+        hovered_start = chrono::steady_clock::now();
     }
 
     return make_pair(hovered, rewind);
