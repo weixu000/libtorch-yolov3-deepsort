@@ -246,7 +246,7 @@ int main(int argc, const char *argv[]) {
         static uint32_t frame_min = 0, frame_max = static_cast<uint32_t>(cap.get(cv::CAP_PROP_FRAME_COUNT));
         static uint32_t processed_frame = 0;
 
-        ImGui::Begin("Control", nullptr, ImGuiWindowFlags_NoResize);
+        ImGui::Begin("Control", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings);
         ImGui::Text("GUI Framerate: %.1f", ImGui::GetIO().Framerate);
         ImGui::Text("Video Framerate: %.1f", cap.get(cv::CAP_PROP_FPS));
         ImGui::Text("Processing:");

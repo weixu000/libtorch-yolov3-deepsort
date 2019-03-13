@@ -76,7 +76,8 @@ public:
             if (!trk_tgt_map.count(id)) { // new track is target
                 TargetWrap wrap;
                 wrap.first = Target(std::make_pair(frame, box),
-                                    image(unnormalize_rect(box, image.cols, image.rows)).clone());
+                                    image(unnormalize_rect(pad_rect(box, padding), image.cols,
+                                                           image.rows)).clone());
                 wrap.second = {id};
                 targets.push_back(std::move(wrap));
             } else if (trk_tgt_map[id] != -1) { // add track to target
@@ -108,6 +109,8 @@ public:
     }
 
 private:
+    static constexpr float padding = 0.1f;
+
     using TargetWrap = std::pair<Target, std::vector<int>>;
 
     std::vector<TargetWrap> targets;
