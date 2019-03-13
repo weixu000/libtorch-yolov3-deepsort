@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <opencv2/opencv.hpp>
 
 #include "imgui/imgui.h"
@@ -246,7 +247,8 @@ int main(int argc, const char *argv[]) {
         static uint32_t processed_frame = 0;
 
         ImGui::Begin("Control", nullptr, ImGuiWindowFlags_NoResize);
-        ImGui::Text("Framerate: %.1f", ImGui::GetIO().Framerate);
+        ImGui::Text("GUI Framerate: %.1f", ImGui::GetIO().Framerate);
+        ImGui::Text("Video Framerate: %.1f", cap.get(cv::CAP_PROP_FPS));
         ImGui::Text("Processing:");
         ImGui::SameLine();
         ImGui::ProgressBar(1.0f * processed_frame / frame_max, ImVec2(0.0f, 0.0f),
@@ -282,7 +284,10 @@ int main(int argc, const char *argv[]) {
             }
         }
 
-        if ((playing || next) && cap.grab()) {
+        static auto prev = chrono::steady_clock::now();
+        if (auto elapsed = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - prev);
+                elapsed.count() > 1000 / cap.get(cv::CAP_PROP_FPS) && (playing || next) && cap.grab()) {
+            prev += elapsed;
             cap.retrieve(image);
 
             if (auto display_frame = static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES));
