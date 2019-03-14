@@ -26,17 +26,18 @@ struct Snapshot {
     Snapshot &operator=(const Snapshot &) = delete;
 
     Snapshot &operator=(Snapshot &&s) {
-        mat = std::move(s.mat);
-        tex = s.tex;
+        if (this != &s) {
+            mat = std::move(s.mat);
+            tex = s.tex;
 
-        s.tex = 0;
+            s.tex = 0;
+            s.mat = cv::Mat();
+        }
     }
 
 
-    Snapshot(Snapshot &&s)
-            : mat(std::move(s.mat)) {
-        tex = s.tex;
-        s.tex = 0;
+    Snapshot(Snapshot &&s) {
+        *this = std::move(s);
     }
 
     cv::Mat mat;

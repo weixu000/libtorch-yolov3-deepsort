@@ -90,12 +90,8 @@ static GLFWwindow *setup_UI() {
     return window;
 }
 
-static TargetRepo repo;
-
-static int video_FPS;
-
-static void draw_res_window(const cv::Mat &image, uint32_t display_frame, int hovered,
-                            GLuint tex, bool *p_open = __null) {
+static void draw_res_window(const cv::Mat &image, TargetRepo &repo,
+                            uint32_t display_frame, int hovered, GLuint tex, bool *p_open = __null) {
     auto size = image_window("Result", tex, p_open);
     cv::Mat ret_image;
     cv::resize(image, ret_image, {size[0], size[1]});
@@ -111,7 +107,7 @@ static void draw_res_window(const cv::Mat &image, uint32_t display_frame, int ho
     mat_to_texture(ret_image, tex);
 }
 
-static auto draw_target_window(bool *p_open = __null) {
+static auto draw_target_window(TargetRepo &repo, int FPS, bool *p_open = __null) {
     int hovered = -1;
     int rewind = -1;
 
@@ -136,9 +132,9 @@ static auto draw_target_window(bool *p_open = __null) {
                             chrono::steady_clock::now() - hovered_start).count();
 
                     // repeatly play snapshots
-                    for (; duration > it->first * 1000 / video_FPS;) {
+                    for (; duration > it->first * 1000 / FPS;) {
                         if (++it == t.snapshots.end()) {
-                            duration -= t.snapshots.rbegin()->first * 1000 / video_FPS;
+                            duration -= t.snapshots.rbegin()->first * 1000 / FPS;
                             it = t.snapshots.begin();
                         }
                     }
@@ -202,7 +198,8 @@ static auto draw_target_window(bool *p_open = __null) {
     return make_pair(hovered, rewind);
 }
 
-static auto process_frame(const cv::Mat &image, Detector &detector, Tracker &tracker, uint32_t processed_frame) {
+static auto process_frame(const cv::Mat &image, TargetRepo &repo,
+                          Detector &detector, Tracker &tracker, uint32_t processed_frame) {
     auto dets = detector.detect(image);
     auto trks = tracker.update(dets);
 
@@ -234,16 +231,18 @@ int main(int argc, const char *argv[]) {
         return -2;
     }
 
-    video_FPS = static_cast<int>(cap.get(cv::CAP_PROP_FPS));
+    auto video_FPS = static_cast<int>(cap.get(cv::CAP_PROP_FPS));
 
-    std::array<int64_t, 2> orig_dim{cap.get(cv::CAP_PROP_FRAME_HEIGHT), cap.get(cv::CAP_PROP_FRAME_WIDTH)};
-    static std::array<int64_t, 2> inp_dim;
+    array<int64_t, 2> orig_dim{cap.get(cv::CAP_PROP_FRAME_HEIGHT), cap.get(cv::CAP_PROP_FRAME_WIDTH)};
+    array<int64_t, 2> inp_dim;
     for (size_t i = 0; i < 2; ++i) {
         auto factor = 1 << 5;
         inp_dim[i] = (orig_dim[i] / factor + 1) * factor;
     }
     Detector detector(inp_dim);
     Tracker tracker(orig_dim);
+
+    TargetRepo repo;
 
     auto image = cv::Mat(orig_dim[0], orig_dim[1], CV_8UC3, {0, 0, 0});
 
@@ -253,8 +252,8 @@ int main(int argc, const char *argv[]) {
         return -1;
     }
 
-    GLuint texture[3];
-    glGenTextures(sizeof(texture) / sizeof(texture), texture);
+    array<GLuint, 3> texture;
+    glGenTextures(texture.size(), texture.data());
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -303,7 +302,7 @@ int main(int argc, const char *argv[]) {
 
         int hovered = -1;
         if (show_target_window) {
-            auto[h, rewind] = draw_target_window(&show_target_window);
+            auto[h, rewind] = draw_target_window(repo, video_FPS, &show_target_window);
             hovered = h;
             if (rewind != -1) {
                 cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(rewind));
@@ -319,7 +318,7 @@ int main(int argc, const char *argv[]) {
 
             if (auto display_frame = static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES));
                     processed_frame < display_frame) {
-                auto[dets, trks] = process_frame(image, detector, tracker, processed_frame);
+                auto[dets, trks] = process_frame(image, repo, detector, tracker, processed_frame);
                 processed_frame = display_frame;
 
                 if (show_dets_window)
@@ -331,7 +330,7 @@ int main(int argc, const char *argv[]) {
         }
 
         if (show_res_window)
-            draw_res_window(image, static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES)) - 1, hovered,
+            draw_res_window(image, repo, static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES)) - 1, hovered,
                             texture[2], &show_res_window);
 
         // Rendering
