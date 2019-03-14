@@ -92,6 +92,8 @@ static GLFWwindow *setup_UI() {
 
 static TargetRepo repo;
 
+static int video_FPS;
+
 static void draw_res_window(const cv::Mat &image, uint32_t display_frame, int hovered,
                             GLuint tex, bool *p_open = __null) {
     auto size = image_window("Result", tex, p_open);
@@ -133,9 +135,12 @@ static auto draw_target_window(bool *p_open = __null) {
                     auto duration = chrono::duration_cast<chrono::milliseconds>(
                             chrono::steady_clock::now() - hovered_start).count();
 
-                    for (; duration > 100; duration -= 100) {
-                        ++it;
-                        if (it == t.snapshots.end()) it = t.snapshots.begin();
+                    // repeatly play snapshots
+                    for (; duration > it->first * 1000 / video_FPS;) {
+                        if (++it == t.snapshots.end()) {
+                            duration -= t.snapshots.rbegin()->first * 1000 / video_FPS;
+                            it = t.snapshots.begin();
+                        }
                     }
                 }
                 ImGui::Image(reinterpret_cast<ImTextureID>(it->second.tex), {50, 50});
@@ -229,6 +234,8 @@ int main(int argc, const char *argv[]) {
         return -2;
     }
 
+    video_FPS = static_cast<int>(cap.get(cv::CAP_PROP_FPS));
+
     std::array<int64_t, 2> orig_dim{cap.get(cv::CAP_PROP_FRAME_HEIGHT), cap.get(cv::CAP_PROP_FRAME_WIDTH)};
     static std::array<int64_t, 2> inp_dim;
     for (size_t i = 0; i < 2; ++i) {
@@ -267,8 +274,8 @@ int main(int argc, const char *argv[]) {
         static uint32_t processed_frame = 0;
 
         ImGui::Begin("Control", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings);
-        ImGui::Text("GUI Framerate: %.1f", ImGui::GetIO().Framerate);
-        ImGui::Text("Video Framerate: %.1f", cap.get(cv::CAP_PROP_FPS));
+        ImGui::Text("GUI Framerate: %d", static_cast<int>(ImGui::GetIO().Framerate));
+        ImGui::Text("Video Framerate: %d", video_FPS);
         ImGui::Text("Processing:");
         ImGui::SameLine();
         ImGui::ProgressBar(1.0f * processed_frame / frame_max, ImVec2(0.0f, 0.0f),
@@ -306,7 +313,7 @@ int main(int argc, const char *argv[]) {
 
         static auto prev = chrono::steady_clock::now();
         if (auto elapsed = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - prev);
-                elapsed.count() > 1000 / cap.get(cv::CAP_PROP_FPS) && (playing || next) && cap.grab()) {
+                elapsed.count() > 1000 / video_FPS && (playing || next) && cap.grab()) {
             prev += elapsed;
             cap.retrieve(image);
 
