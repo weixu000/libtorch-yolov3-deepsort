@@ -42,6 +42,10 @@ void TargetRepo::merge(TargetRepo::size_type to, TargetRepo::size_type from) {
     target_from.trajectories.merge(target_to.trajectories);
     target_to.trajectories = std::move(target_from.trajectories);
 
+    // merge snapshots
+    target_from.snapshots.merge(target_to.snapshots);
+    target_to.snapshots = std::move(target_from.snapshots);
+
     // merged target should have all tracks
     trks_to.insert(trks_to.end(), trks_from.begin(), trks_from.end());
 
