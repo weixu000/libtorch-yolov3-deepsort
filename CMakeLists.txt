@@ -9,4 +9,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(detection)
 add_subdirectory(tracking)
-add_subdirectory(demo)
+add_subdirectory(GUI)
