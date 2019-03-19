@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <utility>
+#include <fstream>
 #include <opencv2/opencv.hpp>
 #include <GL/gl3w.h>
 
@@ -57,8 +58,7 @@ public:
 
     const Target &operator[](size_type idx) { return targets[idx].first; }
 
-    void update(const std::vector<Track> &trks,
-                int frame, const cv::Mat &image);
+    int load();
 
     void merge(size_type to, size_type from);
 
@@ -71,6 +71,7 @@ private:
 
     std::vector<TargetWrap> targets;
     std::vector<int> discard_trks;
+    std::map<int, std::ifstream> trks_files;
 };
 
 #endif //TARGET_H

@@ -20,7 +20,6 @@
 
 #include <GLFW/glfw3.h>
 
-#include "Detector.h"
 #include "util.h"
 #include "Target.h"
 
@@ -128,13 +127,12 @@ static auto draw_target_window(TargetRepo &repo, int FPS, bool *p_open = __null)
             {
                 auto it = t.snapshots.begin();
                 if (hovered_prev == i) {
-                    auto duration = chrono::duration_cast<chrono::milliseconds>(
+                    auto interval = 5 * 1000 / FPS;
+                    for (auto duration = chrono::duration_cast<chrono::milliseconds>(
                             chrono::steady_clock::now() - hovered_start).count();
-
-                    // repeatly play snapshots
-                    for (; duration > it->first * 1000 / FPS;) {
+                         duration > interval; duration -= interval) {
+                        // repeatly play snapshots
                         if (++it == t.snapshots.end()) {
-                            duration -= t.snapshots.rbegin()->first * 1000 / FPS;
                             it = t.snapshots.begin();
                         }
                     }
@@ -198,27 +196,6 @@ static auto draw_target_window(TargetRepo &repo, int FPS, bool *p_open = __null)
     return make_pair(hovered, rewind);
 }
 
-static auto process_frame(const cv::Mat &image, TargetRepo &repo,
-                          Detector &detector, Tracker &tracker, uint32_t processed_frame) {
-    auto dets = detector.detect(image);
-    auto trks = tracker.update(dets);
-
-    array<int64_t, 2> orig_dim{image.rows, image.cols};
-
-    // save normalized boxes
-    for (auto &d:dets) {
-        d = normalize_rect(d, orig_dim[1], orig_dim[0]);
-    }
-
-    for (auto &t:trks) {
-        t.box = normalize_rect(t.box, orig_dim[1], orig_dim[0]);
-    }
-
-    repo.update(trks, processed_frame, image);
-
-    return make_pair(move(dets), move(trks));
-}
-
 int main(int argc, const char *argv[]) {
     if (argc != 2) {
         cerr << "usage: yolo-app <image path>" << endl;
@@ -234,13 +211,6 @@ int main(int argc, const char *argv[]) {
     auto video_FPS = static_cast<int>(cap.get(cv::CAP_PROP_FPS));
 
     array<int64_t, 2> orig_dim{cap.get(cv::CAP_PROP_FRAME_HEIGHT), cap.get(cv::CAP_PROP_FRAME_WIDTH)};
-    array<int64_t, 2> inp_dim;
-    for (size_t i = 0; i < 2; ++i) {
-        auto factor = 1 << 5;
-        inp_dim[i] = (orig_dim[i] / factor + 1) * factor;
-    }
-    Detector detector(inp_dim);
-    Tracker tracker(orig_dim);
 
     TargetRepo repo;
 
@@ -263,8 +233,6 @@ int main(int argc, const char *argv[]) {
         ImGui::NewFrame();
 
         static auto show_demo_window = false;
-        static auto show_dets_window = false;
-        static auto show_trks_window = false;
         static auto show_res_window = true;
         static auto show_target_window = true;
         static auto playing = false;
@@ -281,8 +249,6 @@ int main(int argc, const char *argv[]) {
                            (to_string(processed_frame) + "/" + to_string(frame_max)).c_str());
         ImGui::Separator();
         ImGui::Checkbox("Show demo window", &show_demo_window);
-        ImGui::Checkbox("Show detection window", &show_dets_window);
-        ImGui::Checkbox("Show tracking window", &show_trks_window);
         ImGui::Checkbox("Show result window", &show_res_window);
         ImGui::Checkbox("Show target window", &show_target_window);
         ImGui::Separator();
@@ -315,19 +281,9 @@ int main(int argc, const char *argv[]) {
                 elapsed.count() > 1000 / video_FPS && (playing || next) && cap.grab()) {
             prev += elapsed;
             cap.retrieve(image);
-
-            if (auto display_frame = static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES));
-                    processed_frame < display_frame) {
-                auto[dets, trks] = process_frame(image, repo, detector, tracker, processed_frame);
-                processed_frame = display_frame;
-
-                if (show_dets_window)
-                    draw_dets_window(image, dets, texture[0], &show_dets_window);
-
-                if (show_trks_window)
-                    draw_trks_window(image, trks, texture[1], &show_trks_window);
-            }
         }
+
+        processed_frame = repo.load() + 1;
 
         if (show_res_window)
             draw_res_window(image, repo, static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES)) - 1, hovered,

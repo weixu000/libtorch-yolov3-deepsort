@@ -8,8 +8,6 @@
 #include <sstream>
 #include <algorithm>
 #include "imgui/imgui.h"
-#include "Detector.h"
-#include "Tracker.h"
 
 inline auto load_classes(const std::string &path) {
     std::vector<std::string> out;
@@ -55,7 +53,8 @@ inline void draw_text(cv::Mat &img, const std::string &str,
     cv::putText(img, str, bottom_left, cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255) - color);
 }
 
-inline void draw_bbox(cv::Mat &img, cv::Rect2f bbox, const string &label = "", const cv::Scalar &color = {0, 0, 0}) {
+inline void
+draw_bbox(cv::Mat &img, cv::Rect2f bbox, const std::string &label = "", const cv::Scalar &color = {0, 0, 0}) {
     cv::rectangle(img, bbox, color);
     if (!label.empty()) {
         draw_text(img, label, color, bbox.tl());
@@ -127,28 +126,6 @@ inline ImVec2 image_window(const char *name, GLuint texture, bool *p_open = __nu
     ImGui::Image(reinterpret_cast<ImTextureID>(texture), ImGui::GetContentRegionAvail());
     ImGui::End();
     return ImGui::GetContentRegionAvail(); // return size for image uploading
-}
-
-inline void draw_dets_window(const cv::Mat &image, const std::vector<cv::Rect2f> &dets,
-                             GLuint tex, bool *p_open = __null) {
-    auto size = image_window("Detection", tex, p_open);
-    cv::Mat dets_image;
-    resize(image, dets_image, {size[0], size[1]});
-    for (auto &d:dets) {
-        draw_bbox(dets_image, unnormalize_rect(d, size[0], size[1]));
-    }
-    mat_to_texture(dets_image, tex);
-}
-
-inline void draw_trks_window(const cv::Mat &image, const std::vector<Track> &trks,
-                             GLuint tex, bool *p_open = __null) {
-    auto size = image_window("Tracking", tex, p_open);
-    cv::Mat trks_image;
-    resize(image, trks_image, {size[0], size[1]});
-    for (auto &t:trks) {
-        draw_bbox(trks_image, unnormalize_rect(t.box, size[0], size[1]), std::to_string(t.id));
-    }
-    mat_to_texture(trks_image, tex);
 }
 
 #endif //UTIL_H

@@ -1,8 +1,12 @@
+#include <experimental/filesystem>
+
 #include "Target.h"
 
+using namespace std;
+namespace fs=std::experimental::filesystem;
 
-void TargetRepo::update(const std::vector<Track> &trks, int frame, const cv::Mat &image) {
-    std::map<int, int> trk_tgt_map;
+int TargetRepo::load() {
+    map<int, int> trk_tgt_map;
     for (int i = 0; i < targets.size(); ++i) {
         for (auto j:targets[i].second) {
             assert(trk_tgt_map.count(j) == 0);
@@ -14,23 +18,39 @@ void TargetRepo::update(const std::vector<Track> &trks, int frame, const cv::Mat
         trk_tgt_map[i] = -1;
     }
 
-    for (auto &[id, box]:trks) {
+    for (auto &trk_dir: fs::directory_iterator("targets")) {
+        auto id = stoi(trk_dir.path().filename());
         if (!trk_tgt_map.count(id)) { // new track is target
+            trks_files.emplace(id, ifstream(trk_dir / "trajectories.txt"));
+
             TargetWrap wrap;
-            wrap.first.trajectories[frame] = box;
-            wrap.first.snapshots[frame] = std::move(Snapshot(image(unnormalize_rect(pad_rect(box, padding), image.cols,
-                                                                                    image.rows)).clone()));
             wrap.second = {id};
-            targets.push_back(std::move(wrap));
-        } else if (trk_tgt_map[id] != -1) { // add track to target
+            targets.push_back(move(wrap));
+            trk_tgt_map[id] = targets.size() - 1;
+        }
+        if (trk_tgt_map[id] != -1) { // add track to target
             auto &t = targets[trk_tgt_map[id]].first;
-            t.trajectories.emplace(frame, box);
-            if (frame - t.snapshots.rbegin()->first > 5) {
-                t.snapshots[frame] = std::move(Snapshot(image(unnormalize_rect(pad_rect(box, padding), image.cols,
-                                                                               image.rows)).clone()));
+
+            for (auto &ss_p: fs::directory_iterator(trk_dir)) {
+                auto &ss_path = ss_p.path();
+                if (ss_path.extension() != ".txt" && !t.snapshots.count(stoi(ss_path.stem()))) {
+                    t.snapshots[stoi(ss_path.stem())] = Snapshot(cv::imread(ss_path.string()));
+                }
+            }
+
+            int frame;
+            cv::Rect2f box;
+            while (trks_files[id] >> frame >> box.x >> box.y >> box.width >> box.height) {
+                t.trajectories[frame] = box;
             }
         }
     }
+
+    int processed = 0;
+    for (auto &t:targets) {
+        processed = max(processed, t.first.trajectories.rbegin()->first);
+    }
+    return processed;
 }
 
 void TargetRepo::merge(TargetRepo::size_type to, TargetRepo::size_type from) {
@@ -40,11 +60,11 @@ void TargetRepo::merge(TargetRepo::size_type to, TargetRepo::size_type from) {
     // merge trajectories
     // the target merge from has higher priority
     target_from.trajectories.merge(target_to.trajectories);
-    target_to.trajectories = std::move(target_from.trajectories);
+    target_to.trajectories = move(target_from.trajectories);
 
     // merge snapshots
     target_from.snapshots.merge(target_to.snapshots);
-    target_to.snapshots = std::move(target_from.snapshots);
+    target_to.snapshots = move(target_from.snapshots);
 
     // merged target should have all tracks
     trks_to.insert(trks_to.end(), trks_from.begin(), trks_from.end());
@@ -55,6 +75,7 @@ void TargetRepo::merge(TargetRepo::size_type to, TargetRepo::size_type from) {
 void TargetRepo::erase(TargetRepo::size_type idx) {
     for (auto i:targets[idx].second) {
         discard_trks.push_back(i);
+        trks_files.erase(i);
     }
     targets.erase(targets.begin() + idx); // delete the target
 }
