@@ -8,7 +8,7 @@
 #include "Tracker.h"
 #include "util.h"
 
-class TargetRepo {
+class TargetStorage {
 public:
     void update(const std::vector<Track> &trks,
                 int frame, const cv::Mat &image);

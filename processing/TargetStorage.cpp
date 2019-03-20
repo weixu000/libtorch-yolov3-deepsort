@@ -1,12 +1,12 @@
 #include <experimental/filesystem>
 #include <fstream>
 
-#include "TargetRepo.h"
+#include "TargetStorage.h"
 
 using namespace std;
 namespace fs=std::experimental::filesystem;
 
-void TargetRepo::update(const vector<Track> &trks, int frame, const cv::Mat &image) {
+void TargetStorage::update(const vector<Track> &trks, int frame, const cv::Mat &image) {
     for (auto[id, box]:trks) {
         // save normalized boxes
         box = normalize_rect(box, image.cols, image.rows);
@@ -20,7 +20,7 @@ void TargetRepo::update(const vector<Track> &trks, int frame, const cv::Mat &ima
     }
 }
 
-void TargetRepo::record() {
+void TargetStorage::record() {
     for (auto&[id, t]:targets) {
         auto dir_path = fs::path("targets") / to_string(id);
         fs::create_directories(dir_path);

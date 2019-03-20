@@ -3,7 +3,7 @@
 
 #include "Detector.h"
 #include "Tracker.h"
-#include "TargetRepo.h"
+#include "TargetStorage.h"
 
 using namespace std;
 
@@ -30,7 +30,7 @@ int main(int argc, const char *argv[]) {
     Detector detector(inp_dim);
     Tracker tracker(orig_dim);
 
-    TargetRepo repo;
+    TargetStorage repo;
 
     auto image = cv::Mat();
     while (cap.read(image)) {
