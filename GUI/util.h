@@ -108,7 +108,7 @@ void draw_res_window(const cv::Mat &image, TargetRepo &repo,
     for (std::size_t i = 0; i < repo.size(); ++i) {
         auto &t = repo[i];
         if (t.trajectories.count(display_frame)) {
-            auto color = i == hovered ? cv::Scalar(0, 0, 255) : cv::Scalar(0, 0, 0);
+            auto color = hovered == -1 ? color_map(i) : hovered == i ? cv::Scalar(0, 0, 255) : cv::Scalar(0, 0, 0);
             draw_trajectories(ret_image, t.trajectories, size[0], size[1], color);
             draw_bbox(ret_image, unnormalize_rect(t.trajectories.at(display_frame), size[0], size[1]),
                       std::to_string(i), color);
@@ -149,6 +149,9 @@ auto draw_target_window(TargetRepo &repo, int FPS, bool *p_open = __null) {
                     }
                 }
                 ImGui::Image(reinterpret_cast<void *>(it->second.tex), {50, 50});
+                if (ImGui::IsItemHovered()) {
+                    hovered = i;
+                }
             }
             ImGui::SameLine();
             {
@@ -165,9 +168,6 @@ auto draw_target_window(TargetRepo &repo, int FPS, bool *p_open = __null) {
                 ImGui::EndGroup();
             }
             ImGui::EndGroup();
-        }
-        if (ImGui::IsItemHovered()) {
-            hovered = i;
         }
 
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
