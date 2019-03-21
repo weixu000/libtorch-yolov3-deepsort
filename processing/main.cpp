@@ -20,7 +20,7 @@ int main(int argc, const char *argv[]) {
     }
 
     auto video_FPS = static_cast<int>(cap.get(cv::CAP_PROP_FPS));
-    array<int64_t, 2> orig_dim{cap.get(cv::CAP_PROP_FRAME_HEIGHT), cap.get(cv::CAP_PROP_FRAME_WIDTH)};
+    array<int64_t, 2> orig_dim{int64_t(cap.get(cv::CAP_PROP_FRAME_HEIGHT)), int64_t(cap.get(cv::CAP_PROP_FRAME_WIDTH))};
 
     array<int64_t, 2> inp_dim;
     for (size_t i = 0; i < 2; ++i) {
