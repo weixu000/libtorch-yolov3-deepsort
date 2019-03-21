@@ -7,7 +7,20 @@
 #include <opencv2/opencv.hpp>
 #include <GL/gl3w.h>
 
-#include "util.h"
+inline void mat_to_texture(const cv::Mat &mat, GLuint texture) {
+    assert(mat.isContinuous());
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0,
+                 GL_RGB,
+                 mat.cols, mat.rows,
+                 0,
+                 GL_BGR, GL_UNSIGNED_BYTE, mat.data);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
 
 struct Snapshot {
     explicit Snapshot(const cv::Mat &mat = cv::Mat())
@@ -36,8 +49,7 @@ struct Snapshot {
         }
     }
 
-
-    Snapshot(Snapshot &&s) {
+    Snapshot(Snapshot &&s) : Snapshot() {
         *this = std::move(s);
     }
 

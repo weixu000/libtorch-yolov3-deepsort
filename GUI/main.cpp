@@ -21,7 +21,6 @@
 #include <GLFW/glfw3.h>
 
 #include "util.h"
-#include "TargetRepo.h"
 
 using namespace std;
 
@@ -89,113 +88,6 @@ static GLFWwindow *setup_UI() {
     return window;
 }
 
-static void draw_res_window(const cv::Mat &image, TargetRepo &repo,
-                            uint32_t display_frame, int hovered, GLuint tex, bool *p_open = __null) {
-    auto size = image_window("Result", tex, p_open);
-    cv::Mat ret_image;
-    cv::resize(image, ret_image, {size[0], size[1]});
-    for (size_t i = 0; i < repo.size(); ++i) {
-        auto &t = repo[i];
-        if (t.trajectories.count(display_frame)) {
-            auto color = i == hovered ? cv::Scalar(0, 0, 255) : cv::Scalar(0, 0, 0);
-            draw_trajectories(ret_image, t.trajectories, size[0], size[1], color);
-            draw_bbox(ret_image, unnormalize_rect(t.trajectories.at(display_frame), size[0], size[1]),
-                      to_string(i), color);
-        }
-    }
-    mat_to_texture(ret_image, tex);
-}
-
-static auto draw_target_window(TargetRepo &repo, int FPS, bool *p_open = __null) {
-    int hovered = -1;
-    int rewind = -1;
-
-    vector<TargetRepo::size_type> to_del;
-    vector<std::array<size_t, 2>> to_merge;
-
-    static int hovered_prev = -1;
-    static chrono::steady_clock::time_point hovered_start;
-
-    ImGui::Begin("Targets", p_open);
-    auto &style = ImGui::GetStyle();
-    auto window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-    for (size_t i = 0; i < repo.size(); ++i) {
-        auto &t = repo[i];
-        ImGui::PushID(i);
-        {
-            ImGui::BeginGroup();
-            {
-                auto it = t.snapshots.begin();
-                if (hovered_prev == i) {
-                    auto interval = 5 * 1000 / FPS;
-                    for (auto duration = chrono::duration_cast<chrono::milliseconds>(
-                            chrono::steady_clock::now() - hovered_start).count();
-                         duration > interval; duration -= interval) {
-                        // repeatly play snapshots
-                        if (++it == t.snapshots.end()) {
-                            it = t.snapshots.begin();
-                        }
-                    }
-                }
-                ImGui::Image(reinterpret_cast<ImTextureID>(it->second.tex), {50, 50});
-            }
-            ImGui::SameLine();
-            {
-                ImGui::BeginGroup();
-                ImGui::Text("Id: %d", i);
-                ImGui::Text("Duration: %3d, %3d", t.trajectories.begin()->first, t.trajectories.rbegin()->first);
-                if (ImGui::Button("Delete")) {
-                    to_del.push_back(i);
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("Rewind")) {
-                    rewind = t.trajectories.begin()->first;
-                }
-                ImGui::EndGroup();
-            }
-            ImGui::EndGroup();
-        }
-        if (ImGui::IsItemHovered()) {
-            hovered = i;
-        }
-
-        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-            ImGui::SetDragDropPayload("TARGET_DRAG", &i, sizeof(i));
-            ImGui::Image(reinterpret_cast<ImTextureID>(t.snapshots.begin()->second.tex), {50, 50});
-            ImGui::EndDragDropSource();
-        }
-        if (ImGui::BeginDragDropTarget()) {
-            if (const auto payload = ImGui::AcceptDragDropPayload("TARGET_DRAG")) {
-                auto drop_i = *(const size_t *) payload->Data;
-                to_merge.push_back({i, drop_i});
-            }
-            ImGui::EndDragDropTarget();
-        }
-        ImGui::PopID();
-
-        auto last_x2 = ImGui::GetItemRectMax().x;
-        auto next_x2 = last_x2 + style.ItemSpacing.x
-                       + ImGui::GetItemRectSize().x; // Expected position if next button was on same line
-        if (i != repo.size() - 1 && next_x2 < window_visible_x2)
-            ImGui::SameLine();
-    }
-    ImGui::End();
-
-    for (auto i:to_del) {
-        repo.erase(i);
-    }
-    for (auto[to, from]:to_merge) {
-        repo.merge(to, from);
-    }
-
-    if (hovered != hovered_prev) {
-        hovered_prev = hovered;
-        hovered_start = chrono::steady_clock::now();
-    }
-
-    return make_pair(hovered, rewind);
-}
-
 int main(int argc, const char *argv[]) {
     if (argc != 2) {
         cerr << "usage: yolo-app <image path>" << endl;
@@ -210,11 +102,10 @@ int main(int argc, const char *argv[]) {
 
     auto video_FPS = static_cast<int>(cap.get(cv::CAP_PROP_FPS));
 
-    array<int64_t, 2> orig_dim{cap.get(cv::CAP_PROP_FRAME_HEIGHT), cap.get(cv::CAP_PROP_FRAME_WIDTH)};
-
     TargetRepo repo;
 
-    auto image = cv::Mat(orig_dim[0], orig_dim[1], CV_8UC3, {0, 0, 0});
+    auto image = cv::Mat(int(cap.get(cv::CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv::CAP_PROP_FRAME_WIDTH)),
+                         CV_8UC3, {0, 0, 0});
 
     auto window = setup_UI();
     if (!window) {
@@ -237,31 +128,11 @@ int main(int argc, const char *argv[]) {
         static auto show_target_window = true;
         static auto playing = false;
 
-        static uint32_t frame_min = 0, frame_max = static_cast<uint32_t>(cap.get(cv::CAP_PROP_FRAME_COUNT));
         static uint32_t processed_frame = 0;
 
-        ImGui::Begin("Control", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings);
-        ImGui::Text("GUI Framerate: %d", static_cast<int>(ImGui::GetIO().Framerate));
-        ImGui::Text("Video Framerate: %d", video_FPS);
-        ImGui::Text("Processing:");
-        ImGui::SameLine();
-        ImGui::ProgressBar(1.0f * processed_frame / frame_max, ImVec2(0.0f, 0.0f),
-                           (to_string(processed_frame) + "/" + to_string(frame_max)).c_str());
-        ImGui::Separator();
-        ImGui::Checkbox("Show demo window", &show_demo_window);
-        ImGui::Checkbox("Show result window", &show_res_window);
-        ImGui::Checkbox("Show target window", &show_target_window);
-        ImGui::Separator();
-        ImGui::Checkbox("Playing", &playing);
-        auto next = false;
-        if (auto display_frame = static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES));
-                ImGui::SliderScalar("Display", ImGuiDataType_U32, &display_frame, &frame_min, &processed_frame,
-                                    ("%u/" + to_string(processed_frame)).c_str())) {
-            cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(display_frame));
-            next = true;
-        }
-        next |= ImGui::Button("Next");
-        ImGui::End();
+        bool next;
+        draw_control_window(cap, processed_frame, show_demo_window, show_res_window, show_target_window,
+                            playing, next);
 
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);
