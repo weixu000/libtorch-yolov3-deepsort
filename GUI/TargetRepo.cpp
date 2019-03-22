@@ -43,6 +43,7 @@ int TargetRepo::load() {
             while (trks_files[id] >> frame >> box.x >> box.y >> box.width >> box.height) {
                 t.trajectories[frame] = box;
             }
+            trks_files[id].clear(); // clear EOF flag
         }
     }
 
