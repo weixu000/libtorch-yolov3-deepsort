@@ -10,12 +10,16 @@
 
 class TargetStorage {
 public:
+    explicit TargetStorage(const std::string &dir) : output_dir(dir) {}
+
     void update(const std::vector<Track> &trks,
                 int frame, const cv::Mat &image);
 
     void record();
 
 private:
+    const std::string output_dir;
+
     struct Target {
         std::map<int, cv::Rect2f> trajectories;
         std::map<int, cv::Mat> snapshots;

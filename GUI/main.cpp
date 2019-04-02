@@ -88,13 +88,8 @@ static GLFWwindow *setup_UI() {
     return window;
 }
 
-int main(int argc, const char *argv[]) {
-    if (argc != 2) {
-        cerr << "usage: yolo-app <image path>" << endl;
-        return -1;
-    }
-
-    cv::VideoCapture cap(argv[1]);
+int main() {
+    cv::VideoCapture cap("result/compressed.flv");
     if (!cap.isOpened()) {
         cerr << "Cannot open the video" << endl;
         return -2;

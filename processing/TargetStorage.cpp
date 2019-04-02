@@ -4,7 +4,7 @@
 #include "TargetStorage.h"
 
 using namespace std;
-namespace fs=std::experimental::filesystem;
+namespace fs = std::experimental::filesystem;
 
 void TargetStorage::update(const vector<Track> &trks, int frame, const cv::Mat &image) {
     for (auto[id, box]:trks) {
@@ -22,7 +22,7 @@ void TargetStorage::update(const vector<Track> &trks, int frame, const cv::Mat &
 
 void TargetStorage::record() {
     for (auto&[id, t]:targets) {
-        auto dir_path = fs::path("targets") / to_string(id);
+        auto dir_path = fs::path(output_dir) / to_string(id);
         fs::create_directories(dir_path);
 
         ofstream fp(dir_path / "trajectories.txt", ios::app);

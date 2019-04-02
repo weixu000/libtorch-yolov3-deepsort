@@ -18,7 +18,8 @@ int TargetRepo::load() {
         trk_tgt_map[i] = -1;
     }
 
-    for (auto &trk_dir: fs::directory_iterator("targets")) {
+    for (auto &trk_dir: fs::directory_iterator("result")) {
+        if (!fs::is_directory(trk_dir)) continue;
         auto id = stoi(trk_dir.path().filename());
         if (!trk_tgt_map.count(id)) { // new track is target
             trks_files.emplace(id, ifstream(trk_dir / "trajectories.txt"));
@@ -34,7 +35,13 @@ int TargetRepo::load() {
             for (auto &ss_p: fs::directory_iterator(trk_dir)) {
                 auto &ss_path = ss_p.path();
                 if (ss_path.extension() != ".txt" && !t.snapshots.count(stoi(ss_path.stem()))) {
-                    t.snapshots[stoi(ss_path.stem())] = Snapshot(cv::imread(ss_path.string()));
+                    auto img = cv::Mat();
+                    try {
+                        img = cv::imread(ss_path.string());
+                    } catch (...) {
+                        continue;
+                    }
+                    t.snapshots[stoi(ss_path.stem())] = Snapshot(img);
                 }
             }
 
