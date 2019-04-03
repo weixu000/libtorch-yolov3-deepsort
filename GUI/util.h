@@ -142,7 +142,7 @@ auto draw_target_window(TargetRepo &repo, int FPS, bool *p_open = __null) {
                     for (auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::_V2::steady_clock::now() - hovered_start).count();
                          duration > interval; duration -= interval) {
-                        // repeatly play snapshots
+                        // repeatedly play snapshots
                         if (++it == t.snapshots.end()) {
                             it = t.snapshots.begin();
                         }
