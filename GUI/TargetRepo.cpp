@@ -1,4 +1,7 @@
 #include <experimental/filesystem>
+#include <vector>
+#include <algorithm>
+#include <iterator>
 
 #include "TargetRepo.h"
 
@@ -18,9 +21,21 @@ int TargetRepo::load() {
         trk_tgt_map[i] = -1;
     }
 
-    for (auto &trk_dir: fs::directory_iterator("result")) {
-        if (!fs::is_directory(trk_dir)) continue;
-        auto id = stoi(trk_dir.path().filename());
+    vector<fs::path> result_dir;
+    transform(fs::directory_iterator("result"), fs::directory_iterator(),
+              back_inserter(result_dir),
+              [](const fs::directory_entry &e) {
+                  return e.path();
+              });
+    result_dir.erase(remove_if(result_dir.begin(), result_dir.end(),
+                               [](const fs::path &p) { return !fs::is_directory(p); }),
+                     result_dir.end());
+    sort(result_dir.begin(), result_dir.end(), [](const fs::path &p1, const fs::path &p2) {
+        return stoi(p1.filename()) < stoi(p2.filename());
+    });
+
+    for (auto &trk_dir: result_dir) {
+        auto id = stoi(trk_dir.filename());
         if (!trk_tgt_map.count(id)) { // new track is target
             trks_files.emplace(id, ifstream(trk_dir / "trajectories.txt"));
 
