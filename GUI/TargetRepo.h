@@ -2,6 +2,7 @@
 #define TARGET_H
 
 #include <vector>
+#include <map>
 #include <utility>
 #include <fstream>
 #include <opencv2/opencv.hpp>
