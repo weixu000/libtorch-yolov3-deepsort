@@ -2,7 +2,6 @@
 #include <opencv2/opencv.hpp>
 #include <experimental/filesystem>
 
-
 #include "Detector.h"
 #include "Tracker.h"
 #include "TargetStorage.h"
