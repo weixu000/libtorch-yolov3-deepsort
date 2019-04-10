@@ -1,25 +1,22 @@
 #include <algorithm>
 
 #include "Detector.h"
+#include "Darknet.h"
 #include "letterbox.h"
 
-Detector::Detector(torch::IntList _inp_dim,
+Detector::Detector(const std::array<int64_t, 2> &_inp_dim,
                    float nms, float confidence)
-        : net("models/yolov3.cfg"),
+        : net(new Darknet("models/yolov3.cfg")),
           NMS_threshold(nms), confidence_threshold(confidence) {
-    net.load_weights("weights/yolov3.weights"); // TODO: do not hard-code path
-    net.to(torch::kCUDA);
-    net.eval();
+    net->load_weights("weights/yolov3.weights"); // TODO: do not hard-code path
+    net->to(torch::kCUDA);
+    net->eval();
     torch::NoGradGuard no_grad;
 
-    if (_inp_dim.empty()) {
-        inp_dim[0] = std::atoi(net.net_info().at("height").c_str());
-        inp_dim[1] = std::atoi(net.net_info().at("width").c_str());
-    } else {
-        inp_dim[0] = _inp_dim[0];
-        inp_dim[1] = _inp_dim[1];
-    }
+    inp_dim = _inp_dim;
 }
+
+Detector::~Detector() = default;
 
 
 using DetTensor = std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>;
@@ -80,7 +77,7 @@ std::vector<cv::Rect2f> Detector::detect(cv::Mat image) {
                                                                  {1, inp_dim[0], inp_dim[1], 3})
             .permute({0, 3, 1, 2});
     auto img_var = torch::autograd::make_variable(img_tensor, false).to(torch::kCUDA);
-    auto prediction = net.forward(img_var).squeeze_(0);
+    auto prediction = net->forward(img_var).squeeze_(0);
     auto[bbox, cls, scr] = threshold_confidence(prediction, confidence_threshold);
     bbox = bbox.cpu();
     cls = cls.cpu();
