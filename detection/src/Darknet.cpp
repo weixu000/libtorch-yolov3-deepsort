@@ -3,19 +3,20 @@
 
 using namespace std;
 
-// TODO: use TORCH_MODULE
-struct EmptyLayer : torch::nn::Module {
-    EmptyLayer() = default;
+struct EmptyLayerImpl : torch::nn::Module {
+    EmptyLayerImpl() = default;
 
     torch::Tensor forward(torch::Tensor x) {
         return x;
     }
 };
 
-struct UpsampleLayer : torch::nn::Module {
+TORCH_MODULE(EmptyLayer);
+
+struct UpsampleLayerImpl : torch::nn::Module {
     int _stride;
 
-    explicit UpsampleLayer(int stride) : _stride(stride) {}
+    explicit UpsampleLayerImpl(int stride) : _stride(stride) {}
 
     torch::Tensor forward(torch::Tensor x) {
         auto sizes = x.sizes();
@@ -27,11 +28,13 @@ struct UpsampleLayer : torch::nn::Module {
     }
 };
 
-struct MaxPoolLayer2D : torch::nn::Module {
+TORCH_MODULE(UpsampleLayer);
+
+struct MaxPoolLayer2DImpl : torch::nn::Module {
     int _kernel_size;
     int _stride;
 
-    MaxPoolLayer2D(int kernel_size, int stride) : _kernel_size(kernel_size), _stride(stride) {}
+    MaxPoolLayer2DImpl(int kernel_size, int stride) : _kernel_size(kernel_size), _stride(stride) {}
 
     torch::Tensor forward(torch::Tensor x) {
         if (_stride != 1) {
@@ -47,11 +50,13 @@ struct MaxPoolLayer2D : torch::nn::Module {
     }
 };
 
-struct DetectionLayer : torch::nn::Module {
+TORCH_MODULE(MaxPoolLayer2D);
+
+struct DetectionLayerImpl : torch::nn::Module {
     torch::Tensor anchors;
     std::array<torch::Tensor, 2> grid;
 
-    explicit DetectionLayer(const ::std::vector<float> &_anchors)
+    explicit DetectionLayerImpl(const ::std::vector<float> &_anchors)
             : anchors(register_buffer("anchors",
                                       torch::from_blob((void *) _anchors.data(),
                                                        {static_cast<int64_t>(_anchors.size() / 2), 2}).clone())),
@@ -89,18 +94,21 @@ struct DetectionLayer : torch::nn::Module {
     }
 };
 
-Darknet::Darknet(const string &cfg_file) {
+TORCH_MODULE(DetectionLayer);
+
+
+Detector::Darknet::Darknet(const string &cfg_file) {
     blocks = load_cfg(cfg_file);
 
     create_modules();
 }
 
-void Darknet::load_weights(const string &weight_file) {
+void Detector::Darknet::load_weights(const string &weight_file) {
     ::load_weights(weight_file, blocks, module_list); // TODO: remove this function
 }
 
 // TODO: reimplement the python version
-torch::Tensor Darknet::forward(torch::Tensor x) {
+torch::Tensor Detector::Darknet::forward(torch::Tensor x) {
     auto inp_dim = x.sizes().slice(2);
     auto module_count = module_list.size();
 
@@ -150,7 +158,7 @@ torch::Tensor Darknet::forward(torch::Tensor x) {
 }
 
 // TODO: reimplement the python version
-void Darknet::create_modules() {
+void Detector::Darknet::create_modules() {
     int prev_filters = 3;
 
     vector<int> output_filters;

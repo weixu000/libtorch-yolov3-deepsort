@@ -6,7 +6,9 @@
 #include <vector>
 #include <map>
 
-struct Darknet : torch::nn::Module {
+#include "Detector.h"
+
+struct Detector::Darknet : torch::nn::Module {
 public:
     explicit Darknet(const string &cfg_file);
 
