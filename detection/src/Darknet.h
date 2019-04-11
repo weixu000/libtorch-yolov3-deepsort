@@ -10,7 +10,7 @@
 
 struct Detector::Darknet : torch::nn::Module {
 public:
-    explicit Darknet(const string &cfg_file);
+    explicit Darknet(const std::string &cfg_file);
 
     const std::map<std::string, std::string> &net_info() {
         assert(!blocks.empty() && blocks[0]["type"] == "net");

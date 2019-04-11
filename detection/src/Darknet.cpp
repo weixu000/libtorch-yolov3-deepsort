@@ -20,7 +20,6 @@ struct UpsampleLayerImpl : torch::nn::Module {
 
     torch::Tensor forward(torch::Tensor x) {
         auto sizes = x.sizes();
-
         auto w = sizes[2] * _stride;
         auto h = sizes[3] * _stride;
 
@@ -40,8 +39,7 @@ struct MaxPoolLayer2DImpl : torch::nn::Module {
         if (_stride != 1) {
             x = torch::max_pool2d(x, {_kernel_size, _kernel_size}, {_stride, _stride});
         } else {
-            int pad = _kernel_size - 1;
-
+            auto pad = _kernel_size - 1;
             torch::Tensor padded_x = torch::replication_pad2d(x, {0, pad, 0, pad});
             x = torch::max_pool2d(padded_x, {_kernel_size, _kernel_size}, {_stride, _stride});
         }
@@ -62,7 +60,7 @@ struct DetectionLayerImpl : torch::nn::Module {
                                                        {static_cast<int64_t>(_anchors.size() / 2), 2}).clone())),
               grid{torch::empty({0}), torch::empty({0})} {}
 
-    torch::Tensor forward(torch::Tensor prediction, torch::IntList inp_dim) {
+    torch::Tensor forward(torch::Tensor prediction, torch::IntArrayRef inp_dim) {
         auto grid_size = prediction.sizes().slice(2);
         if (grid_size[0] != grid[0].size(0) || grid_size[1] != grid[1].size(0)) {
             // update grid if size not match

@@ -156,7 +156,7 @@ auto draw_target_window(TargetRepo &repo, int FPS, bool *p_open = __null) {
             ImGui::SameLine();
             {
                 ImGui::BeginGroup();
-                ImGui::Text("Id: %d", i);
+                ImGui::Text("Id: %zu", i);
                 ImGui::Text("Duration: %3d, %3d", t.trajectories.begin()->first, t.trajectories.rbegin()->first);
                 if (ImGui::Button("Delete")) {
                     to_del.push_back(i);

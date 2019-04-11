@@ -74,11 +74,9 @@ std::vector<cv::Rect2f> Detector::detect(cv::Mat image) {
     cv::cvtColor(image, image, cv::COLOR_RGB2BGR);
     image.convertTo(image, CV_32F, 1.0 / 255);
 
-    auto img_tensor = torch::CPU(torch::kFloat32).tensorFromBlob(image.data,
-                                                                 {1, inp_dim[0], inp_dim[1], 3})
-            .permute({0, 3, 1, 2});
-    auto img_var = torch::autograd::make_variable(img_tensor, false).to(torch::kCUDA);
-    auto prediction = net->forward(img_var).squeeze_(0);
+    auto img_tensor = torch::from_blob(image.data, {1, inp_dim[0], inp_dim[1], 3})
+            .permute({0, 3, 1, 2}).to(torch::kCUDA);
+    auto prediction = net->forward(img_tensor).squeeze_(0);
     auto[bbox, cls, scr] = threshold_confidence(prediction, confidence_threshold);
     bbox = bbox.cpu();
     cls = cls.cpu();
