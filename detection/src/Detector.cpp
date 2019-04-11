@@ -6,7 +6,7 @@
 
 Detector::Detector(const std::array<int64_t, 2> &_inp_dim,
                    float nms, float confidence)
-        : net(new Darknet("models/yolov3.cfg")),
+        : net(std::make_unique<Darknet>("models/yolov3.cfg")),
           NMS_threshold(nms), confidence_threshold(confidence) {
     net->load_weights("weights/yolov3.weights"); // TODO: do not hard-code path
     net->to(torch::kCUDA);
