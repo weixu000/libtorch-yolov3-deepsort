@@ -14,5 +14,8 @@ Currently on a GTX 1060 6G it consumes about 1G RAM and have 37 FPS.
 
 The video I test is [TownCentreXVID.avi](http://www.robots.ox.ac.uk/ActiveVision/Research/Projects/2009bbenfold_headpose/Datasets/TownCentreXVID.avi).
 
+# GUI
+With [Dear ImGui](https://github.com/ocornut/imgui), I developed the GUI module for visualization of results.
+
 # TODO
 Still under construction...
