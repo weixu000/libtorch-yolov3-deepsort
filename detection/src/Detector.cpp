@@ -11,7 +11,6 @@ Detector::Detector(const std::array<int64_t, 2> &_inp_dim,
     net->load_weights("weights/yolov3.weights"); // TODO: do not hard-code path
     net->to(torch::kCUDA);
     net->eval();
-    torch::NoGradGuard no_grad;
 
     inp_dim = _inp_dim;
 }
@@ -68,6 +67,8 @@ static inline void NMS(std::vector<Detection> &dets, float threshold) {
 }
 
 std::vector<cv::Rect2f> Detector::detect(cv::Mat image) {
+    torch::NoGradGuard no_grad;
+
     int64_t orig_dim[] = {image.rows, image.cols};
     image = letterbox_img(image, inp_dim);
     cv::cvtColor(image, image, cv::COLOR_RGB2BGR);

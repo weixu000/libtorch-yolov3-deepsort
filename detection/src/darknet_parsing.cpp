@@ -154,7 +154,7 @@ void load_weights(const string &weight_file, const Blocks &blocks, std::vector<t
 
     fs.close();
 
-    at::Tensor weights = at::CPU(torch::kFloat32).tensorFromBlob(weights_src, {length / 4});
+    at::Tensor weights = at::CPU(torch::kFloat32).tensorFromBlob(weights_src, {length / 4}, free);
 
     for (int i = 0; i < module_list.size(); i++) {
         auto &module_info = blocks[i + 1];
