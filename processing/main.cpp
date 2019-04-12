@@ -3,7 +3,7 @@
 #include <experimental/filesystem>
 
 #include "Detector.h"
-#include "Tracker.h"
+#include "SORT.h"
 #include "TargetStorage.h"
 
 using namespace std;
@@ -42,7 +42,7 @@ int main(int argc, const char *argv[]) {
         inp_dim[i] = (orig_dim[i] / 3 / factor + 1) * factor;
     }
     Detector detector(inp_dim);
-    Tracker tracker(orig_dim);
+    SORT tracker(orig_dim);
 
     TargetStorage repo(output_dir);
 
