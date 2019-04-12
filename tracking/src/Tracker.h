@@ -7,8 +7,7 @@
 #include "Track.h"
 #include "KalmanTracker.h"
 
-using DistanceMetricFunc = std::function<
-        torch::Tensor(const std::vector<cv::Rect2f> &dets, const std::vector<cv::Rect2f> &trks)>;
+using DistanceMetricFunc = std::function<torch::Tensor()>;
 
 class Tracker {
 public:
@@ -18,12 +17,12 @@ public:
     std::vector<Track> update(const std::vector<cv::Rect2f> &dets,
                               const DistanceMetricFunc &metric);
 
+    std::vector<KalmanTracker> trackers;
+
 private:
     const cv::Rect2f img_box;
-    static const int max_age = 10;
-    static const int min_hits = 3;
-
-    std::vector<KalmanTracker> trackers;
+    static const auto max_age = 10;
+    static const auto min_hits = 3;
 
     int frame_count = 0;
 };

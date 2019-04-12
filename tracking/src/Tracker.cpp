@@ -74,13 +74,7 @@ vector<Track> Tracker::update(const vector<Rect2f> &dets,
                              }),
                    trackers.end());
 
-    vector<Rect2f> trks;
-    for (auto &t : trackers) {
-        trks.push_back(t.get_state());
-    }
-
-    auto dist = metric(dets, trks);
-    auto[matched, unmatched_dets, unmatched_trks] = associate_detections_to_trackers(dist);
+    auto[matched, unmatched_dets, unmatched_trks] = associate_detections_to_trackers(metric());
 
     // update matched trackers with assigned detections.
     // each prediction is corresponding to a tracker
