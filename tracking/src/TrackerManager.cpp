@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <tuple>
 
-#include "Tracker.h"
+#include "TrackerManager.h"
 #include "Hungarian.h"
 
 using namespace std;
@@ -58,8 +58,8 @@ namespace {
     }
 }
 
-vector<Track> Tracker::update(const vector<Rect2f> &dets,
-                              const DistanceMetricFunc &metric) {
+vector<Track> TrackerManager::update(const vector<Rect2f> &dets,
+                                     const DistanceMetricFunc &metric) {
     ++frame_count;
 
     for (auto &t:trackers) {
@@ -77,7 +77,7 @@ vector<Track> Tracker::update(const vector<Rect2f> &dets,
     auto[matched, unmatched_dets, unmatched_trks] = associate_detections_to_trackers(metric());
 
     // update matched trackers with assigned detections.
-    // each prediction is corresponding to a tracker
+    // each prediction is corresponding to a manager
     for (auto &m : matched) {
         trackers[m.x].update(dets[m.y]);
     }

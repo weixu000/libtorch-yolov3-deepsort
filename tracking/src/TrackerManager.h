@@ -9,9 +9,9 @@
 
 using DistanceMetricFunc = std::function<torch::Tensor()>;
 
-class Tracker {
+class TrackerManager {
 public:
-    explicit Tracker(const std::array<int64_t, 2> &dim)
+    explicit TrackerManager(const std::array<int64_t, 2> &dim)
             : img_box(0, 0, dim[1], dim[0]) {}
 
     std::vector<Track> update(const std::vector<cv::Rect2f> &dets,

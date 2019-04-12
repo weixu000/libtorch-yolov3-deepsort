@@ -5,7 +5,7 @@
 
 #include "Track.h"
 
-class Tracker;
+class TrackerManager;
 
 class SORT {
 public:
@@ -16,7 +16,7 @@ public:
     std::vector<Track> update(const std::vector<cv::Rect2f> &dets);
 
 private:
-    std::unique_ptr<Tracker> tracker;
+    std::unique_ptr<TrackerManager> manager;
 };
 
 #endif //SORT_H
