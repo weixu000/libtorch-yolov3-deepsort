@@ -13,21 +13,39 @@ class FeatureMetric {
 public:
     torch::Tensor distance(torch::Tensor features, const std::vector<int> &targets);
 
-    void update(torch::Tensor feats, const std::vector<int> &active_targets, const std::vector<int> &remain_targets);
+    void update(torch::Tensor feats, const std::vector<int> &active_targets);
 
-private:
+    void erase(const std::vector<int> &removed);
+
     class FeatureBundle;
 
-    std::map<int, FeatureBundle> samples;
+    std::vector<FeatureBundle> samples;
 };
 
 class FeatureMetric::FeatureBundle {
 public:
     FeatureBundle() : full(false), next(0), store(torch::empty({budget, feat_dim})) {}
 
-    void add(torch::Tensor feat);
+    void clear() {
+        next = 0;
+        full = false;
+    }
 
-    torch::Tensor get();
+    bool empty() const {
+        return next == 0 && !full;
+    }
+
+    void add(torch::Tensor feat) {
+        if (next == budget) {
+            full = true;
+            next = 0;
+        }
+        store[next++] = feat;
+    }
+
+    torch::Tensor get() const {
+        return full ? store : store.slice(0, 0, next);
+    }
 
 private:
     static const int64_t budget = 100, feat_dim = 512;
