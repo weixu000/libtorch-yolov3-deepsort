@@ -3,28 +3,45 @@
 
 #include "opencv2/video/tracking.hpp"
 
-using StateType = cv::Rect2f;
+enum class TrackState {
+    Tentative,
+    Confirmed,
+    Deleted
+};
+
 
 // This class represents the internel state of individual tracked objects observed as bounding box.
 class KalmanTracker {
 public:
-    explicit KalmanTracker(StateType initRect);
+    explicit KalmanTracker(cv::Rect2f initRect);
 
-    StateType predict();
+    void predict();
 
-    void update(StateType stateMat);
+    void update(cv::Rect2f stateMat);
 
-    StateType get_state() const;
+    void miss();
 
-    int time_since_update = 0;
-    int id = kf_count++;
+    cv::Rect2f rect() const;
+
+    TrackState state() const { return _state; }
+
+    int id() const { return _id; }
 
 private:
-    static int kf_count;
+    static const auto max_age = 30;
+    static const auto n_init = 3;
+
+    static int count;
+
+    TrackState _state = TrackState::Tentative;
+
+    int _id = -1;
+
+    int time_since_update = 0;
+    int hits = 0;
 
     cv::KalmanFilter kf;
     cv::Mat measurement;
 };
-
 
 #endif //KALMAN_H

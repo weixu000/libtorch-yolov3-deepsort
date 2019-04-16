@@ -2,20 +2,22 @@
 
 using namespace cv;
 
-// Convert bounding box from [cx,cy,s,r] to [x,y,w,h] style.
-static inline StateType get_rect_xysr(const Mat &xysr) {
-    auto cx = xysr.at<float>(0, 0), cy = xysr.at<float>(1, 0), s = xysr.at<float>(2, 0), r = xysr.at<float>(3, 0);
-    float w = sqrt(s * r);
-    float h = s / w;
-    float x = (cx - w / 2);
-    float y = (cy - h / 2);
+namespace {
+    // Convert bounding box from [cx,cy,s,r] to [x,y,w,h] style.
+    cv::Rect2f get_rect_xysr(const Mat &xysr) {
+        auto cx = xysr.at<float>(0, 0), cy = xysr.at<float>(1, 0), s = xysr.at<float>(2, 0), r = xysr.at<float>(3, 0);
+        float w = sqrt(s * r);
+        float h = s / w;
+        float x = (cx - w / 2);
+        float y = (cy - h / 2);
 
-    return StateType(x, y, w, h);
+        return cv::Rect2f(x, y, w, h);
+    }
 }
 
-int KalmanTracker::kf_count = 0;
+int KalmanTracker::count = 0;
 
-KalmanTracker::KalmanTracker(StateType initRect) {
+KalmanTracker::KalmanTracker(cv::Rect2f initRect) {
     int stateNum = 7;
     int measureNum = 4;
     kf = KalmanFilter(stateNum, measureNum, 0);
@@ -45,17 +47,21 @@ KalmanTracker::KalmanTracker(StateType initRect) {
 }
 
 // Predict the estimated bounding box.
-StateType KalmanTracker::predict() {
+void KalmanTracker::predict() {
     ++time_since_update;
 
-    StateType predictBox = get_rect_xysr(kf.predict());
-
-    return predictBox;
+    kf.predict();
 }
 
 // Update the state vector with observed bounding box.
-void KalmanTracker::update(StateType stateMat) {
+void KalmanTracker::update(cv::Rect2f stateMat) {
     time_since_update = 0;
+    ++hits;
+
+    if (_state == TrackState::Tentative && hits > n_init) {
+        _state = TrackState::Confirmed;
+        _id = count++;
+    }
 
     // measurement
     measurement.at<float>(0, 0) = stateMat.x + stateMat.width / 2;
@@ -67,7 +73,15 @@ void KalmanTracker::update(StateType stateMat) {
     kf.correct(measurement);
 }
 
+void KalmanTracker::miss() {
+    if (_state == TrackState::Tentative) {
+        _state = TrackState::Deleted;
+    } else if (time_since_update > max_age) {
+        _state = TrackState::Deleted;
+    }
+}
+
 // Return the current state vector
-StateType KalmanTracker::get_state() const {
+cv::Rect2f KalmanTracker::rect() const {
     return get_rect_xysr(kf.statePost);
 }
