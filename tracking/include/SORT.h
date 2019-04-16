@@ -1,6 +1,7 @@
 #ifndef SORT_H
 #define SORT_H
 
+#include <opencv2/opencv.hpp>
 #include <memory>
 
 #include "Track.h"

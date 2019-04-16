@@ -7,8 +7,7 @@
 
 class Detector {
 public:
-    explicit Detector(const std::array<int64_t, 2> &_inp_dim,
-                      float nms = 0.5f, float confidence = 0.6f);
+    explicit Detector(const std::array<int64_t, 2> &_inp_dim);
 
     ~Detector();
 
@@ -20,8 +19,8 @@ private:
     std::unique_ptr<Darknet> net;
 
     std::array<int64_t, 2> inp_dim;
-    const float NMS_threshold;
-    const float confidence_threshold;
+    static const float NMS_threshold;
+    static const float confidence_threshold;
 };
 
 
