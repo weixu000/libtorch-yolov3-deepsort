@@ -11,20 +11,22 @@ using DistanceMetricFunc = std::function<torch::Tensor()>;
 
 class TrackerManager {
 public:
-    explicit TrackerManager(const std::array<int64_t, 2> &dim)
-            : img_box(0, 0, dim[1], dim[0]) {}
+    explicit TrackerManager(const std::array<int64_t, 2> &dim, float threshold)
+            : img_box(0, 0, dim[1], dim[0]), dist_threshold(threshold) {}
+
+    void predict();
 
     std::vector<Track> update(const std::vector<cv::Rect2f> &dets,
                               const DistanceMetricFunc &metric);
 
     std::vector<KalmanTracker> trackers;
+    std::vector<cv::Point> matched;
 
 private:
     const cv::Rect2f img_box;
-    static const auto max_age = 10;
-    static const auto min_hits = 3;
+    const float dist_threshold;
 
-    int frame_count = 0;
+    static const auto max_age = 10;
 };
 
 #endif //TRACKER_H

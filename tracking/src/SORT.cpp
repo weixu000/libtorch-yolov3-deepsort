@@ -5,11 +5,12 @@
 using namespace std;
 
 SORT::SORT(const array<int64_t, 2> &dim)
-        : manager(make_unique<TrackerManager>(dim)) {}
+        : manager(make_unique<TrackerManager>(dim, 0.7f)) {}
 
 SORT::~SORT() = default;
 
 vector<Track> SORT::update(const vector<cv::Rect2f> &dets) {
+    manager->predict();
     auto ret = manager->update(
             dets,
             [this, &dets]() {

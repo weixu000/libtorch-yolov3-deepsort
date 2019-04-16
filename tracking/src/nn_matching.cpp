@@ -13,6 +13,48 @@ namespace {
 
         return in / un;
     }
+
+    torch::Tensor nn_cosine_distance(torch::Tensor x, torch::Tensor y) {
+        return get<0>(torch::min(1 - torch::matmul(x, y.t()), 0));
+    }
+}
+
+torch::Tensor FeatureMetric::distance(torch::Tensor features, const vector<int> &targets) {
+    auto dist = torch::empty({int64_t(targets.size()), features.size(0)});
+    if (features.size(0)) {
+        for (size_t i = 0; i < targets.size(); ++i) {
+            dist[i] = nn_cosine_distance(samples.at(targets[i]).get(), features);
+        }
+    }
+
+    return dist;
+}
+
+void FeatureMetric::update(torch::Tensor feats, const vector<int> &active_targets,
+                           const vector<int> &remain_targets) {
+    map<int, FeatureBundle> samples_r;
+    for (auto t:remain_targets) {
+        if (samples.count(t)) {
+            samples_r.emplace(t, samples[t]);
+        }
+    }
+    samples = move(samples_r);
+
+    for (size_t i = 0; i < active_targets.size(); ++i) {
+        samples[active_targets[i]].add(feats[i]);
+    }
+}
+
+void FeatureMetric::FeatureBundle::add(torch::Tensor feat) {
+    if (next == budget) {
+        full = true;
+        next = 0;
+    }
+    store[next++] = feat;
+}
+
+torch::Tensor FeatureMetric::FeatureBundle::get() {
+    return full ? store : store.slice(0, 0, next);
 }
 
 torch::Tensor iou_dist(const vector<Rect2f> &dets, const vector<Rect2f> &trks) {

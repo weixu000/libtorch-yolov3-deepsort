@@ -5,7 +5,6 @@
 
 using StateType = cv::Rect2f;
 
-
 // This class represents the internel state of individual tracked objects observed as bounding box.
 class KalmanTracker {
 public:
@@ -18,7 +17,6 @@ public:
     StateType get_state() const;
 
     int time_since_update = 0;
-    int hit_streak = 0;
     int id = kf_count++;
 
 private:

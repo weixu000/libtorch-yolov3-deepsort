@@ -9,7 +9,7 @@ using namespace std;
 using namespace cv;
 
 namespace {
-    auto associate_detections_to_trackers(torch::Tensor dist, float threshold = 0.7f) {
+    auto associate_detections_to_trackers(torch::Tensor dist, float threshold) {
         auto trk_num = dist.size(0);
         auto det_num = dist.size(1);
         auto dist_a = dist.accessor<float, 2>();
@@ -58,34 +58,36 @@ namespace {
     }
 }
 
-vector<Track> TrackerManager::update(const vector<Rect2f> &dets,
-                                     const DistanceMetricFunc &metric) {
-    ++frame_count;
-
+void TrackerManager::predict() {
     for (auto &t:trackers) {
         t.predict();
     }
-
     trackers.erase(remove_if(trackers.begin(), trackers.end(),
                              [](const KalmanTracker &t) {
                                  auto bbox = t.get_state();
-                                 return std::isnan(bbox.x) || std::isnan(bbox.y)
-                                        || std::isnan(bbox.width) || std::isnan(bbox.height);
+                                 return std::isnan(bbox.x) || std::isnan(bbox.y) ||
+                                        std::isnan(bbox.width) || std::isnan(bbox.height);
                              }),
                    trackers.end());
+}
 
-    auto[matched, unmatched_dets, unmatched_trks] = associate_detections_to_trackers(metric());
+vector<Track> TrackerManager::update(const vector<Rect2f> &dets,
+                                     const DistanceMetricFunc &metric) {
+    auto[matched, unmatched_dets, unmatched_trks] = associate_detections_to_trackers(metric(), dist_threshold);
 
     // update matched trackers with assigned detections.
     // each prediction is corresponding to a manager
-    for (auto &m : matched) {
-        trackers[m.x].update(dets[m.y]);
+    for (auto[x, y] : matched) {
+        trackers[x].update(dets[y]);
     }
 
     // create and initialise new trackers for unmatched detections
     for (auto umd : unmatched_dets) {
         trackers.emplace_back(dets[umd]);
+        matched.emplace_back(trackers.back().id, umd);
     }
+
+    this->matched = move(matched);
 
     trackers.erase(remove_if(trackers.begin(), trackers.end(),
                              [this](const KalmanTracker &t) {
