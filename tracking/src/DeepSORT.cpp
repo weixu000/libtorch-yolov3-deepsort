@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "DeepSORT.h"
 #include "Extractor.h"
 #include "TrackerManager.h"
@@ -7,46 +9,59 @@ using namespace std;
 
 DeepSORT::DeepSORT(const array<int64_t, 2> &dim)
         : extractor(make_unique<Extractor>()),
-          manager(make_unique<TrackerManager>(dim, 0.2f)),
+          manager(make_unique<TrackerManager>(dim)),
           feat_metric(make_unique<FeatureMetric>()) {}
 
 
 DeepSORT::~DeepSORT() = default;
 
-vector<Track> DeepSORT::update(const std::vector<cv::Rect2f> &dets, cv::Mat ori_img) {
-    manager->predict();
-    auto ret = manager->update(
-            dets,
-            [this, &dets, &ori_img]() {
+vector<Track> DeepSORT::update(const std::vector<cv::Rect2f> &detections, cv::Mat ori_img) {
+    feat_metric->erase(manager->predict());
+
+    auto[matched, removed]= manager->update(
+            detections,
+            [this, &detections, &ori_img](const std::vector<int> &trk_ids, const std::vector<int> &det_ids) {
                 vector<cv::Rect2f> trks;
-                vector<int> ids;
-                for (auto &t : manager->trackers) {
-                    trks.push_back(t.get_state());
-                    ids.push_back(t.id);
+                for (auto t : trk_ids) {
+                    trks.push_back(manager->trackers[t].rect());
+                }
+                vector<cv::Mat> boxes;
+                vector<cv::Rect2f> dets;
+                for (auto d:det_ids) {
+                    dets.push_back(detections[d]);
+                    boxes.push_back(ori_img(detections[d]));
+                }
+
+                auto iou_mat = iou_dist(dets, trks);
+                auto feat_mat = feat_metric->distance(extractor->extract(boxes), trk_ids);
+                feat_mat.masked_fill_(iou_mat > 0.8f, TrackerManager::invalid_dist);
+                feat_mat.masked_fill_(feat_mat > 0.2f, TrackerManager::invalid_dist);
+                return feat_mat;
+            },
+            [this, &detections](const std::vector<int> &trk_ids, const std::vector<int> &det_ids) {
+                vector<cv::Rect2f> trks;
+                for (auto t : trk_ids) {
+                    trks.push_back(manager->trackers[t].rect());
+                }
+                vector<cv::Rect2f> dets;
+                for (auto &d:det_ids) {
+                    dets.push_back(detections[d]);
                 }
                 auto iou_mat = iou_dist(dets, trks);
-
-                vector<cv::Mat> boxes;
-                for (auto &d:dets) {
-                    boxes.push_back(ori_img(d));
-                }
-                auto feat_mat = feat_metric->distance(extractor->extract(boxes), ids);
-                feat_mat.masked_fill_(iou_mat > 0.8f, 1E5f);
-                return feat_mat;
+                iou_mat.masked_fill_(iou_mat > 0.7f, TrackerManager::invalid_dist);
+                return iou_mat;
             });
 
     vector<cv::Mat> boxes;
-    vector<int> active_targets;
-    for (auto[x, y]:manager->matched) {
-        active_targets.push_back(x);
-        boxes.push_back(ori_img(dets[y]));
+    vector<int> targets;
+    for (auto[x, y]:matched) {
+        targets.emplace_back(x);
+        boxes.emplace_back(ori_img(detections[y]));
     }
-    vector<int> remain_targets;
-    for (auto &t : manager->trackers) {
-        remain_targets.push_back(t.id);
-    }
-    auto features = extractor->extract(boxes);
-    feat_metric->update(features, active_targets, remain_targets);
+    feat_metric->update(extractor->extract(boxes), targets);
+    feat_metric->erase(removed);
 
-    return ret;
+    assert(feat_metric->samples.size() == manager->trackers.size());
+
+    return manager->visible_tracks();
 }

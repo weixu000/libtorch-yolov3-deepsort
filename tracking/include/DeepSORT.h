@@ -19,7 +19,7 @@ public:
 
     ~DeepSORT();
 
-    std::vector<Track> update(const std::vector<cv::Rect2f> &dets, cv::Mat ori_img);
+    std::vector<Track> update(const std::vector<cv::Rect2f> &detections, cv::Mat ori_img);
 
 private:
     std::unique_ptr<Extractor> extractor;
