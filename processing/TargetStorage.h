@@ -2,6 +2,7 @@
 #define TARGET_H
 
 #include <map>
+#include <array>
 #include <utility>
 #include <opencv2/opencv.hpp>
 
@@ -10,15 +11,15 @@
 
 class TargetStorage {
 public:
-    explicit TargetStorage(const std::string &dir) : output_dir(dir) {}
+    explicit TargetStorage(const std::array<int64_t, 2> &orig_dim, int video_FPS);
 
     void update(const std::vector<Track> &trks,
                 int frame, const cv::Mat &image);
 
+private:
     void record();
 
-private:
-    const std::string output_dir;
+    static const std::string output_dir;
 
     struct Target {
         std::map<int, cv::Rect2f> trajectories;
@@ -29,6 +30,8 @@ private:
     static constexpr float padding = 0.1f;
 
     std::map<int, Target> targets;
+
+    cv::VideoWriter writer;
 };
 
 #endif //TARGET_H

@@ -1,11 +1,26 @@
 #include <experimental/filesystem>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 
 #include "TargetStorage.h"
 
 using namespace std;
 namespace fs = std::experimental::filesystem;
+
+const string TargetStorage::output_dir = "result";
+
+TargetStorage::TargetStorage(const array<int64_t, 2> &orig_dim, int video_FPS) {
+    fs::create_directories(output_dir);
+    writer.open((fs::path(output_dir) / "compressed.flv").string(),
+                cv::VideoWriter::fourcc('a', 'v', 'c', '1'),
+                video_FPS, cv::Size(orig_dim[1], orig_dim[0]));
+    if (!writer.isOpened()) {
+        cerr << "Cannot open cv::VideoWriter" << endl;
+        exit(-3);
+    }
+}
+
 
 void TargetStorage::update(const vector<Track> &trks, int frame, const cv::Mat &image) {
     for (auto[id, box]:trks) {
@@ -19,6 +34,10 @@ void TargetStorage::update(const vector<Track> &trks, int frame, const cv::Mat &
             t.last_snap = frame;
         }
     }
+
+    record();
+
+    writer.write(image);
 }
 
 void TargetStorage::record() {
