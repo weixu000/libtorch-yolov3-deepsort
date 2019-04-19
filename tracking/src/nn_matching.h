@@ -8,9 +8,10 @@
 
 torch::Tensor iou_dist(const std::vector<cv::Rect2f> &dets, const std::vector<cv::Rect2f> &trks);
 
+// save features of the track in GPU
 class FeatureBundle {
 public:
-    FeatureBundle() : full(false), next(0), store(torch::empty({budget, feat_dim})) {}
+    FeatureBundle() : full(false), next(0), store(torch::empty({budget, feat_dim}).cuda()) {}
 
     void clear() {
         next = 0;
@@ -68,7 +69,7 @@ private:
     std::vector<TrackData> &data;
 
     torch::Tensor nn_cosine_distance(torch::Tensor x, torch::Tensor y) {
-        return std::get<0>(torch::min(1 - torch::matmul(x, y.t()), 0));
+        return std::get<0>(torch::min(1 - torch::matmul(x, y.t()), 0)).cpu();
     }
 };
 

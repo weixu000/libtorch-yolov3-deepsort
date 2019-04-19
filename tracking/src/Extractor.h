@@ -24,7 +24,7 @@ class Extractor {
 public:
     Extractor();
 
-    torch::Tensor extract(const std::vector<cv::Mat> &input);
+    torch::Tensor extract(std::vector<cv::Mat> input); // return GPUTensor
 
 private:
     Net net;

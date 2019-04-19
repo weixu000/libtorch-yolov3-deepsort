@@ -130,27 +130,23 @@ Extractor::Extractor() {
     net->eval();
 }
 
-torch::Tensor Extractor::extract(const vector<cv::Mat> &input) {
+torch::Tensor Extractor::extract(vector<cv::Mat> input) {
     if (input.empty()) {
         return torch::empty({0, 512});
     }
 
     torch::NoGradGuard no_grad;
 
-    static const auto MEAN = torch::tensor({0.485f, 0.456f, 0.406f}).view({1, -1, 1, 1});
-    static const auto STD = torch::tensor({0.229f, 0.224f, 0.225f}).view({1, -1, 1, 1});
+    static const auto MEAN = torch::tensor({0.485f, 0.456f, 0.406f}).view({1, -1, 1, 1}).cuda();
+    static const auto STD = torch::tensor({0.229f, 0.224f, 0.225f}).view({1, -1, 1, 1}).cuda();
 
     vector<torch::Tensor> resized;
-    for (auto x:input) {
+    for (auto &x:input) {
         cv::resize(x, x, {64, 128});
         cv::cvtColor(x, x, cv::COLOR_RGB2BGR);
         x.convertTo(x, CV_32F, 1.0 / 255);
         resized.push_back(torch::from_blob(x.data, {128, 64, 3}));
     }
     auto tensor = torch::stack(resized).cuda().permute({0, 3, 1, 2}).sub_(MEAN).div_(STD);
-    return net(tensor).cpu();
-}
-
-int main() {
-    Extractor x;
+    return net(tensor);
 }
