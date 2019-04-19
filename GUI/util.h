@@ -214,7 +214,6 @@ namespace {
         ImGui::Begin("Control", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings);
         ImGui::Text("GUI Framerate: %d", static_cast<int>(ImGui::GetIO().Framerate));
         ImGui::Text("Video Framerate: %d", static_cast<int>(cap.get(cv::CAP_PROP_FPS)));
-        ImGui::Text("Processed: %d", processed_frame);
         ImGui::Separator();
         ImGui::Checkbox("Show demo window", &show_demo_window);
         ImGui::Checkbox("Show result window", &show_res_window);
@@ -222,7 +221,7 @@ namespace {
         ImGui::Separator();
         ImGui::Checkbox("Playing", &playing);
         if (auto display_frame = static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES));
-                ImGui::SliderScalar("Display", ImGuiDataType_U32, &display_frame, &frame_min, &processed_frame,
+                ImGui::SliderScalar("", ImGuiDataType_U32, &display_frame, &frame_min, &processed_frame,
                                     ("%u/" + std::to_string(processed_frame)).c_str())) {
             cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(display_frame));
             next = true;
