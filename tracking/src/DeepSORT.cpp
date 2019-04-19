@@ -7,23 +7,29 @@
 
 using namespace std;
 
+struct DeepSORT::TrackData {
+    KalmanTracker kalman;
+    FeatureBundle feats;
+};
+
 DeepSORT::DeepSORT(const array<int64_t, 2> &dim)
         : extractor(make_unique<Extractor>()),
-          manager(make_unique<TrackerManager>(dim)),
-          feat_metric(make_unique<FeatureMetric>()) {}
+          manager(make_unique<TrackerManager<TrackData>>(data, dim)),
+          feat_metric(make_unique<FeatureMetric<TrackData>>(data)) {}
 
 
 DeepSORT::~DeepSORT() = default;
 
 vector<Track> DeepSORT::update(const std::vector<cv::Rect2f> &detections, cv::Mat ori_img) {
-    feat_metric->erase(manager->predict());
+    manager->predict();
+    manager->remove_nan();
 
-    auto[matched, removed]= manager->update(
+    auto matched = manager->update(
             detections,
             [this, &detections, &ori_img](const std::vector<int> &trk_ids, const std::vector<int> &det_ids) {
                 vector<cv::Rect2f> trks;
                 for (auto t : trk_ids) {
-                    trks.push_back(manager->trackers[t].rect());
+                    trks.push_back(data[t].kalman.rect());
                 }
                 vector<cv::Mat> boxes;
                 vector<cv::Rect2f> dets;
@@ -34,21 +40,20 @@ vector<Track> DeepSORT::update(const std::vector<cv::Rect2f> &detections, cv::Ma
 
                 auto iou_mat = iou_dist(dets, trks);
                 auto feat_mat = feat_metric->distance(extractor->extract(boxes), trk_ids);
-                feat_mat.masked_fill_(iou_mat > 0.8f, TrackerManager::invalid_dist);
-                feat_mat.masked_fill_(feat_mat > 0.2f, TrackerManager::invalid_dist);
+                feat_mat.masked_fill_((iou_mat > 0.8f).__ior__(feat_mat > 0.2f), INVALID_DIST);
                 return feat_mat;
             },
             [this, &detections](const std::vector<int> &trk_ids, const std::vector<int> &det_ids) {
                 vector<cv::Rect2f> trks;
                 for (auto t : trk_ids) {
-                    trks.push_back(manager->trackers[t].rect());
+                    trks.push_back(data[t].kalman.rect());
                 }
                 vector<cv::Rect2f> dets;
                 for (auto &d:det_ids) {
                     dets.push_back(detections[d]);
                 }
                 auto iou_mat = iou_dist(dets, trks);
-                iou_mat.masked_fill_(iou_mat > 0.7f, TrackerManager::invalid_dist);
+                iou_mat.masked_fill_(iou_mat > 0.7f, INVALID_DIST);
                 return iou_mat;
             });
 
@@ -59,9 +64,8 @@ vector<Track> DeepSORT::update(const std::vector<cv::Rect2f> &detections, cv::Ma
         boxes.emplace_back(ori_img(detections[y]));
     }
     feat_metric->update(extractor->extract(boxes), targets);
-    feat_metric->erase(removed);
 
-    assert(feat_metric->samples.size() == manager->trackers.size());
+    manager->remove_deleted();
 
     return manager->visible_tracks();
 }

@@ -145,9 +145,9 @@ torch::Tensor Extractor::extract(const vector<cv::Mat> &input) {
         cv::resize(x, x, {64, 128});
         cv::cvtColor(x, x, cv::COLOR_RGB2BGR);
         x.convertTo(x, CV_32F, 1.0 / 255);
-        resized.push_back(torch::from_blob(x.data, {128, 64, 3}).clone());
+        resized.push_back(torch::from_blob(x.data, {128, 64, 3}));
     }
-    auto tensor = torch::stack(resized).permute({0, 3, 1, 2}).sub_(MEAN).div_(STD).cuda();
+    auto tensor = torch::stack(resized).cuda().permute({0, 3, 1, 2}).sub_(MEAN).div_(STD);
     return net(tensor).cpu();
 }
 

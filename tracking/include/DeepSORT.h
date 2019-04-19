@@ -9,8 +9,10 @@
 
 class Extractor;
 
+template<typename T>
 class TrackerManager;
 
+template<typename T>
 class FeatureMetric;
 
 class DeepSORT {
@@ -22,9 +24,12 @@ public:
     std::vector<Track> update(const std::vector<cv::Rect2f> &detections, cv::Mat ori_img);
 
 private:
+    class TrackData;
+
+    std::vector<TrackData> data;
     std::unique_ptr<Extractor> extractor;
-    std::unique_ptr<TrackerManager> manager;
-    std::unique_ptr<FeatureMetric> feat_metric;
+    std::unique_ptr<TrackerManager<TrackData>> manager;
+    std::unique_ptr<FeatureMetric<TrackData>> feat_metric;
 };
 
 

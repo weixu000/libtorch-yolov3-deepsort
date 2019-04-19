@@ -3,10 +3,13 @@
 
 #include <opencv2/opencv.hpp>
 #include <memory>
+#include <vector>
 
 #include "Track.h"
 
+template<typename T>
 class TrackerManager;
+
 
 class SORT {
 public:
@@ -17,7 +20,11 @@ public:
     std::vector<Track> update(const std::vector<cv::Rect2f> &dets);
 
 private:
-    std::unique_ptr<TrackerManager> manager;
+    class TrackData;
+
+    std::vector<TrackData> data;
+
+    std::unique_ptr<TrackerManager<TrackData>> manager;
 };
 
 #endif //SORT_H

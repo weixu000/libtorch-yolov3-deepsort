@@ -13,7 +13,11 @@ enum class TrackState {
 // This class represents the internel state of individual tracked objects observed as bounding box.
 class KalmanTracker {
 public:
-    explicit KalmanTracker(cv::Rect2f initRect);
+    KalmanTracker();
+
+    explicit KalmanTracker(cv::Rect2f initRect) : KalmanTracker() { init(initRect); }
+
+    void init(cv::Rect2f initRect);
 
     void predict();
 

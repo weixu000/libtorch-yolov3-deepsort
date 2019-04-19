@@ -15,44 +15,6 @@ namespace {
 
         return in / un;
     }
-
-    torch::Tensor nn_cosine_distance(torch::Tensor x, torch::Tensor y) {
-        return get<0>(torch::min(1 - torch::matmul(x, y.t()), 0));
-    }
-}
-
-torch::Tensor FeatureMetric::distance(torch::Tensor features, const vector<int> &targets) {
-    auto dist = torch::empty({int64_t(targets.size()), features.size(0)});
-    if (features.size(0)) {
-        for (size_t i = 0; i < targets.size(); ++i) {
-            dist[i] = nn_cosine_distance(samples.at(targets[i]).get(), features);
-        }
-    }
-
-    return dist;
-}
-
-void FeatureMetric::erase(const std::vector<int> &removed) {
-    for (auto t:removed) {
-        samples[t].clear();
-    }
-
-    samples.erase(remove_if(samples.begin(), samples.end(),
-                            [](const FeatureBundle &b) {
-                                return b.empty();
-                            }),
-                  samples.end());
-}
-
-void FeatureMetric::update(torch::Tensor feats, const vector<int> &targets) {
-    if (!targets.empty()) {
-        if (targets.back() >= samples.size()) {
-            samples.resize(targets.back() + 1);
-        }
-        for (size_t i = 0; i < targets.size(); ++i) {
-            samples[targets[i]].add(feats[i]);
-        }
-    }
 }
 
 torch::Tensor iou_dist(const vector<Rect2f> &dets, const vector<Rect2f> &trks) {

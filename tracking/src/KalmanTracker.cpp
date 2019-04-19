@@ -17,7 +17,7 @@ namespace {
 
 int KalmanTracker::count = 0;
 
-KalmanTracker::KalmanTracker(cv::Rect2f initRect) {
+KalmanTracker::KalmanTracker() {
     int stateNum = 7;
     int measureNum = 4;
     kf = KalmanFilter(stateNum, measureNum, 0);
@@ -38,7 +38,9 @@ KalmanTracker::KalmanTracker(cv::Rect2f initRect) {
     setIdentity(kf.processNoiseCov, Scalar::all(1e-2));
     setIdentity(kf.measurementNoiseCov, Scalar::all(1e-1));
     setIdentity(kf.errorCovPost, Scalar::all(1));
+}
 
+void KalmanTracker::init(cv::Rect2f initRect) {
     // initialize state vector with bounding box in [cx,cy,s,r] style
     kf.statePost.at<float>(0, 0) = initRect.x + initRect.width / 2;
     kf.statePost.at<float>(1, 0) = initRect.y + initRect.height / 2;
