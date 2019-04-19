@@ -16,7 +16,7 @@ SORT::~SORT() = default;
 
 vector<Track> SORT::update(const vector<cv::Rect2f> &detections) {
     manager->predict();
-    manager->remove_deleted();
+    manager->remove_nan();
 
     auto metric = [this, &detections](const std::vector<int> &trk_ids, const std::vector<int> &det_ids) {
         vector<cv::Rect2f> trks;
@@ -32,7 +32,7 @@ vector<Track> SORT::update(const vector<cv::Rect2f> &detections) {
         return iou_mat;
     };
     manager->update(detections, metric, metric);
-    manager->remove_nan();
+    manager->remove_deleted();
 
     return manager->visible_tracks();
 }
