@@ -23,7 +23,7 @@ int main(int argc, const char *argv[]) {
     array<int64_t, 2> inp_dim;
     for (size_t i = 0; i < 2; ++i) {
         auto factor = 1 << 5;
-        inp_dim[i] = (orig_dim[i] / 3 / factor + 1) * factor;
+        inp_dim[i] = (orig_dim[i] / 4 / factor + 1) * factor;
     }
     Detector detector(inp_dim);
     DeepSORT tracker(orig_dim);
