@@ -6,7 +6,7 @@
 #include "TargetRepo.h"
 
 using namespace std;
-namespace fs=std::experimental::filesystem;
+namespace fs = std::experimental::filesystem;
 
 int TargetRepo::load() {
     map<int, int> trk_tgt_map;
@@ -74,31 +74,4 @@ int TargetRepo::load() {
         processed = max(processed, t.first.trajectories.rbegin()->first);
     }
     return processed;
-}
-
-void TargetRepo::merge(TargetRepo::size_type to, TargetRepo::size_type from) {
-    auto &[target_to, trks_to] = targets[to];
-    auto &[target_from, trks_from] = targets[from];
-
-    // merge trajectories
-    // the target merge from has higher priority
-    target_from.trajectories.merge(target_to.trajectories);
-    target_to.trajectories = move(target_from.trajectories);
-
-    // merge snapshots
-    target_from.snapshots.merge(target_to.snapshots);
-    target_to.snapshots = move(target_from.snapshots);
-
-    // merged target should have all tracks
-    trks_to.insert(trks_to.end(), trks_from.begin(), trks_from.end());
-
-    targets.erase(targets.begin() + from);
-}
-
-void TargetRepo::erase(TargetRepo::size_type idx) {
-    for (auto i:targets[idx].second) {
-        discard_trks.push_back(i);
-        trks_files.erase(i);
-    }
-    targets.erase(targets.begin() + idx); // delete the target
 }

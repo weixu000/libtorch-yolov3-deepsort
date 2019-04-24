@@ -25,68 +25,70 @@
 
 using namespace std;
 
-static void glfw_error_callback(int error, const char *description) {
-    cerr << "Glfw Error" << error << ": " << description << endl;
-}
+namespace {
+    void glfw_error_callback(int error, const char *description) {
+        cerr << "Glfw Error" << error << ": " << description << endl;
+    }
 
-static GLFWwindow *setup_UI() {
-    // Setup window
-    glfwSetErrorCallback(glfw_error_callback);
-    if (!glfwInit())
-        return nullptr;
+    GLFWwindow *setup_UI() {
+        // Setup window
+        glfwSetErrorCallback(glfw_error_callback);
+        if (!glfwInit())
+            return nullptr;
 
-    // Decide GL+GLSL versions
+        // Decide GL+GLSL versions
 #if __APPLE__
-    // GL 3.2 + GLSL 150
+        // GL 3.2 + GLSL 150
     const char* glsl_version = "#version 150";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
 #else
-    // GL 3.0 + GLSL 130
-    const char *glsl_version = "#version 130";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-    //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+        // GL 3.0 + GLSL 130
+        const char *glsl_version = "#version 130";
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+        //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+        //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 #endif
 
-    // Create window with graphics context
-    GLFWwindow *window = glfwCreateWindow(1280, 720, "YOLO+SORT+ImGui", NULL, NULL);
-    if (!window)
-        return nullptr;
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(1); // Enable vsync
+        // Create window with graphics context
+        GLFWwindow *window = glfwCreateWindow(1280, 720, "YOLO+SORT+ImGui", NULL, NULL);
+        if (!window)
+            return nullptr;
+        glfwMakeContextCurrent(window);
+        glfwSwapInterval(1); // Enable vsync
 
-    // Initialize OpenGL loader
+        // Initialize OpenGL loader
 #if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
-    bool err = gl3wInit() != 0;
+        bool err = gl3wInit() != 0;
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
-    bool err = glewInit() != GLEW_OK;
+        bool err = glewInit() != GLEW_OK;
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
     bool err = gladLoadGL() == 0;
 #else
     bool err = false; // If you use IMGUI_IMPL_OPENGL_LOADER_CUSTOM, your loader is likely to requires some form of initialization.
 #endif
-    if (err) {
-        fprintf(stderr, "Failed to initialize OpenGL loader!\n");
-        return nullptr;
+        if (err) {
+            fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+            return nullptr;
+        }
+
+        // Setup Dear ImGui context
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+
+        // Setup Dear ImGui style
+        ImGui::StyleColorsDark();
+        //ImGui::StyleColorsClassic();
+
+        // Setup Platform/Renderer bindings
+        ImGui_ImplGlfw_InitForOpenGL(window, true);
+        ImGui_ImplOpenGL3_Init(glsl_version);
+
+        return window;
     }
-
-    // Setup Dear ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-    //ImGui::StyleColorsClassic();
-
-    // Setup Platform/Renderer bindings
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init(glsl_version);
-
-    return window;
 }
 
 int main() {

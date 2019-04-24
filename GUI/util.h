@@ -118,20 +118,20 @@ namespace {
     }
 
     auto draw_target_window(TargetRepo &repo, int FPS, bool *p_open = __null) {
+        using namespace std::chrono;
+
         int hovered = -1;
         int rewind = -1;
 
-        std::vector<TargetRepo::size_type> to_del;
-        std::vector<std::array<std::size_t, 2>> to_merge;
-
         static int hovered_prev = -1;
-        static std::chrono::_V2::steady_clock::time_point hovered_start;
+        static steady_clock::time_point hovered_start;
 
         ImGui::Begin("Targets", p_open);
         auto &style = ImGui::GetStyle();
         auto window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
         for (std::size_t i = 0; i < repo.size(); ++i) {
             auto &t = repo[i];
+            if (t.snapshots.empty() || t.trajectories.empty()) continue;
             ImGui::PushID(i);
             {
                 ImGui::BeginGroup();
@@ -139,8 +139,7 @@ namespace {
                     auto it = t.snapshots.begin();
                     if (hovered_prev == i) {
                         auto interval = 5 * 1000 / FPS;
-                        for (auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                std::chrono::_V2::steady_clock::now() - hovered_start).count();
+                        for (auto duration = duration_cast<milliseconds>(steady_clock::now() - hovered_start).count();
                              duration > interval; duration -= interval) {
                             // repeatedly play snapshots
                             if (++it == t.snapshots.end()) {
@@ -148,7 +147,7 @@ namespace {
                             }
                         }
                     }
-                    ImGui::Image(reinterpret_cast<void *>(it->second.tex), {50, 50});
+                    ImGui::Image(reinterpret_cast<void *>(it->second.texId()), {50, 50});
                     if (ImGui::IsItemHovered()) {
                         hovered = i;
                     }
@@ -158,29 +157,12 @@ namespace {
                     ImGui::BeginGroup();
                     ImGui::Text("Id: %zu", i);
                     ImGui::Text("Duration: %3d, %3d", t.trajectories.begin()->first, t.trajectories.rbegin()->first);
-                    if (ImGui::Button("Delete")) {
-                        to_del.push_back(i);
-                    }
-                    ImGui::SameLine();
                     if (ImGui::Button("Rewind")) {
                         rewind = t.trajectories.begin()->first;
                     }
                     ImGui::EndGroup();
                 }
                 ImGui::EndGroup();
-            }
-
-            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-                ImGui::SetDragDropPayload("TARGET_DRAG", &i, sizeof(i));
-                ImGui::Image(reinterpret_cast<void *>(t.snapshots.begin()->second.tex), {50, 50});
-                ImGui::EndDragDropSource();
-            }
-            if (ImGui::BeginDragDropTarget()) {
-                if (const auto payload = ImGui::AcceptDragDropPayload("TARGET_DRAG")) {
-                    auto drop_i = *(const std::size_t *) payload->Data;
-                    to_merge.push_back({i, drop_i});
-                }
-                ImGui::EndDragDropTarget();
             }
             ImGui::PopID();
 
@@ -192,16 +174,9 @@ namespace {
         }
         ImGui::End();
 
-        for (auto i:to_del) {
-            repo.erase(i);
-        }
-        for (auto[to, from]:to_merge) {
-            repo.merge(to, from);
-        }
-
         if (hovered != hovered_prev) {
             hovered_prev = hovered;
-            hovered_start = std::chrono::_V2::steady_clock::now();
+            hovered_start = steady_clock::now();
         }
 
         return std::make_pair(hovered, rewind);

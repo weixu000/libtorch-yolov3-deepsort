@@ -73,10 +73,6 @@ public:
 
     int load();
 
-    void merge(size_type to, size_type from);
-
-    void erase(size_type idx);
-
 private:
     static constexpr float padding = 0.1f;
 
