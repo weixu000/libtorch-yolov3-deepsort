@@ -155,8 +155,8 @@ int main() {
         processed_frame = repo.load() + 1;
 
         if (show_res_window)
-            draw_res_window(image, repo, static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES)) - 1, hovered,
-                            texture[2], &show_res_window);
+            draw_res_window(image, repo, static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES)) - 1,
+                            hovered, &show_res_window);
 
         // Rendering
         ImGui::Render();

@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/opengl.hpp>
 #include <sstream>
 #include <algorithm>
 
@@ -101,9 +102,11 @@ namespace {
     }
 
     void draw_res_window(const cv::Mat &image, TargetRepo &repo,
-                         uint32_t display_frame, int hovered, unsigned int tex, bool *p_open = __null) {
-        auto size = image_window("Result", tex, p_open);
-        cv::Mat ret_image;
+                         uint32_t display_frame, int hovered, bool *p_open = __null) {
+        static auto tex = cv::ogl::Texture2D();
+
+        auto size = image_window("Result", tex.texId(), p_open);
+        auto ret_image = cv::Mat();
         cv::resize(image, ret_image, {int(size[0]), int(size[1])});
         for (std::size_t i = 0; i < repo.size(); ++i) {
             auto &t = repo[i];
@@ -114,7 +117,7 @@ namespace {
                           std::to_string(i), color);
             }
         }
-        mat_to_texture(ret_image, tex);
+        tex.copyFrom(ret_image, true);
     }
 
     auto draw_target_window(TargetRepo &repo, int FPS, bool *p_open = __null) {
