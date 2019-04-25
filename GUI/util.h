@@ -108,15 +108,16 @@ namespace {
         auto size = image_window("Result", tex.texId(), p_open);
         auto ret_image = cv::Mat();
         cv::resize(image, ret_image, {int(size[0]), int(size[1])});
-        for (std::size_t i = 0; i < repo.size(); ++i) {
-            auto &t = repo[i];
+        for (auto &[id, t]:repo.get()) {
             if (t.trajectories.count(display_frame)) {
-                auto color = hovered == -1 ? color_map(i) : hovered == i ? cv::Scalar(0, 0, 255) : cv::Scalar(0, 0, 0);
+                auto color =
+                        hovered == -1 ? color_map(id) : hovered == id ? cv::Scalar(0, 0, 255) : cv::Scalar(0, 0, 0);
                 draw_trajectories(ret_image, t.trajectories, size[0], size[1], color);
                 draw_bbox(ret_image, unnormalize_rect(t.trajectories.at(display_frame), size[0], size[1]),
-                          std::to_string(i), color);
+                          std::to_string(id), color);
             }
         }
+        repo.finished_get();
         tex.copyFrom(ret_image, true);
     }
 
@@ -132,21 +133,20 @@ namespace {
         ImGui::Begin("Targets", p_open);
         auto &style = ImGui::GetStyle();
         auto window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-        for (std::size_t i = 0; i < repo.size(); ++i) {
-            auto &t = repo[i];
-            if (t.snapshots.empty() || t.trajectories.empty()) continue;
+        for (auto&[i, t]:repo.get()) {
+            if (t.snapshots_tex.empty() || t.trajectories.empty()) continue;
             ImGui::PushID(i);
             {
                 ImGui::BeginGroup();
                 {
-                    auto it = t.snapshots.begin();
+                    auto it = t.snapshots_tex.begin();
                     if (hovered_prev == i) {
                         auto interval = 5 * 1000 / FPS;
                         for (auto duration = duration_cast<milliseconds>(steady_clock::now() - hovered_start).count();
                              duration > interval; duration -= interval) {
                             // repeatedly play snapshots
-                            if (++it == t.snapshots.end()) {
-                                it = t.snapshots.begin();
+                            if (++it == t.snapshots_tex.end()) {
+                                it = t.snapshots_tex.begin();
                             }
                         }
                     }
@@ -158,7 +158,7 @@ namespace {
                 ImGui::SameLine();
                 {
                     ImGui::BeginGroup();
-                    ImGui::Text("Id: %zu", i);
+                    ImGui::Text("Id: %d", i);
                     ImGui::Text("Duration: %3d, %3d", t.trajectories.begin()->first, t.trajectories.rbegin()->first);
                     if (ImGui::Button("Rewind")) {
                         rewind = t.trajectories.begin()->first;
@@ -172,9 +172,10 @@ namespace {
             auto last_x2 = ImGui::GetItemRectMax().x;
             auto next_x2 = last_x2 + style.ItemSpacing.x
                            + ImGui::GetItemRectSize().x; // Expected position if next button was on same line
-            if (i != repo.size() - 1 && next_x2 < window_visible_x2)
+            if (next_x2 < window_visible_x2)
                 ImGui::SameLine();
         }
+        repo.finished_get();
         ImGui::End();
 
         if (hovered != hovered_prev) {
@@ -185,7 +186,7 @@ namespace {
         return std::make_pair(hovered, rewind);
     }
 
-    void draw_control_window(cv::VideoCapture &cap, uint32_t &processed_frame, bool &show_demo_window,
+    void draw_control_window(cv::VideoCapture &cap, uint32_t processed_frame, bool &show_demo_window,
                              bool &show_res_window, bool &show_target_window, bool &playing, bool &next) {
         next = false;
         uint32_t frame_min = 0, frame_max = static_cast<uint32_t>(cap.get(cv::CAP_PROP_FRAME_COUNT));

@@ -126,10 +126,8 @@ int main() {
         static auto show_target_window = true;
         static auto playing = false;
 
-        static uint32_t processed_frame = 0;
-
         bool next;
-        draw_control_window(cap, processed_frame, show_demo_window, show_res_window, show_target_window,
+        draw_control_window(cap, repo.processed() + 1, show_demo_window, show_res_window, show_target_window,
                             playing, next);
 
         if (show_demo_window)
@@ -151,8 +149,6 @@ int main() {
             prev += elapsed;
             cap.retrieve(image);
         }
-
-        processed_frame = repo.load() + 1;
 
         if (show_res_window)
             draw_res_window(image, repo, static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES)) - 1,
