@@ -32,8 +32,6 @@ public:
     int processed() const;
 
 private:
-    static inline const std::string output_dir = "result";
-
     std::thread load_thread;
 
     void load();

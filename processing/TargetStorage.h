@@ -19,8 +19,6 @@ public:
 private:
     void record();
 
-    static const std::string output_dir;
-
     struct Target {
         std::map<int, cv::Rect2f> trajectories;
         std::map<int, cv::Mat> snapshots;

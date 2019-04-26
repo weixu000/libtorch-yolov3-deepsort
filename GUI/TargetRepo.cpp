@@ -5,16 +5,17 @@
 #include <GL/gl3w.h>
 
 #include "TargetRepo.h"
+#include "config.h"
 
 using namespace std;
 namespace fs = std::experimental::filesystem;
 
 void TargetRepo::load() {
     while (!stop) {
-        for (auto &trk_dir: fs::directory_iterator(fs::path(output_dir) / "targets")) {
+        for (auto &trk_dir: fs::directory_iterator(fs::path(OUTPUT_DIR) / TARGETS_DIR_NAME)) {
             auto id = stoi(trk_dir.path().filename());
             if (!targets.count(id)) { // new track is target
-                trks_files.emplace(id, ifstream(trk_dir / "trajectories.txt"));
+                trks_files.emplace(id, ifstream(trk_dir / TRAJ_TXT_NAME));
                 {
                     lock_guard<mutex> lock(targets_mutex);
                     targets.emplace(id, Target());
@@ -22,7 +23,7 @@ void TargetRepo::load() {
             }
             auto &t = targets[id];
 
-            for (auto &ss_p: fs::directory_iterator(trk_dir / "snapshots")) {
+            for (auto &ss_p: fs::directory_iterator(trk_dir / SNAPSHOTS_DIR_NAME)) {
                 auto &ss_path = ss_p.path();
                 if (!t.snapshots_tex.count(stoi(ss_path.stem()))) {
                     auto img = cv::Mat();
