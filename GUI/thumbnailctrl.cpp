@@ -93,8 +93,6 @@ bool wxThumbnailCtrl::Create(wxWindow *parent, wxWindowID id, const wxPoint &pos
     CalculateOverallThumbnailSize();
 
     SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE));
-    // m_tagBitmap = wxBitmap(tick_xpm);
-
     SetBackgroundStyle(wxBG_STYLE_CUSTOM);
 
     // Tell the sizers to use the given or best size    
@@ -116,7 +114,6 @@ void wxThumbnailCtrl::Init() {
     m_unfocussedThumbnailBackgroundColour = wxTHUMBNAIL_DEFAULT_UNFOCUSSED_BACKGROUND;
     m_unselectedThumbnailBackgroundColour = wxTHUMBNAIL_DEFAULT_UNSELECTED_BACKGROUND;
     m_typeColour = wxTHUMBNAIL_DEFAULT_TYPE_COLOUR;
-    m_tagColour = wxTHUMBNAIL_DEFAULT_TAG_COLOUR;
     m_focusRectColour = wxTHUMBNAIL_DEFAULT_FOCUS_RECT_COLOUR;
     m_focusItem = -1;
     m_showOutlines = false;
@@ -151,11 +148,6 @@ int wxThumbnailCtrl::Insert(wxThumbnailItem *item, int pos) {
         if (m_selections[i] >= pos)
             m_selections[i] = m_selections[i] + 1;
     }
-    // Ditto for tags
-    for (i = 0; i < m_tags.GetCount(); i++) {
-        if (m_tags[i] >= pos)
-            m_tags[i] = m_tags[i] + 1;
-    }
 
     if (!IsFrozen()) {
         SetupScrollbars();
@@ -171,65 +163,12 @@ void wxThumbnailCtrl::Clear() {
     m_focusItem = -1;
     m_items.Clear();
     m_selections.Clear();
-    m_tags.Clear();
     m_hoverItem = wxNOT_FOUND;
 
     if (!IsFrozen()) {
         SetupScrollbars();
         Refresh();
     }
-}
-
-int wxThumbnailCtrl::Compare(wxThumbnailItem **item1, wxThumbnailItem **item2) {
-    wxFAIL_MSG("Override wxThumbnailCtrl::Compare function and provide your implementaion.");
-    return 0;
-}
-
-/// Sorts items
-void wxThumbnailCtrl::Sort() {
-    // preserve and restore selections & tags
-    size_t i;
-    size_t len = m_items.GetCount();
-    for (i = 0; i < len; i++) {
-        auto &item = m_items[i];
-        int state = 0;
-        if (IsSelected(i))
-            state |= wxTHUMBNAIL_SELECTED;
-        if (IsTagged(i))
-            state |= wxTHUMBNAIL_TAGGED;
-        item.SetState(state);
-    }
-    m_selections.Clear();
-    m_tags.Clear();
-    m_firstSelection = -1;
-    m_lastSelection = -1;
-    m_focusItem = -1;
-
-    sm_currentThumbnailCtrl = this;
-
-    m_items.Sort([](wxThumbnailItem **item1, wxThumbnailItem **item2) {
-        return sm_currentThumbnailCtrl->Compare(item1, item2);
-    });
-
-    sm_currentThumbnailCtrl = NULL;
-
-    wxThumbnailEvent cmdEvent(
-            wxEVT_COMMAND_THUMBNAIL_SORTED,
-            GetId());
-    cmdEvent.SetEventObject(this);
-    GetEventHandler()->ProcessEvent(cmdEvent);
-
-    Freeze();
-
-    for (i = 0; i < len; i++) {
-        auto &item = m_items[i];
-        if (item.GetState() & wxTHUMBNAIL_SELECTED)
-            Select(i);
-        if (item.GetState() & wxTHUMBNAIL_TAGGED)
-            Tag(i);
-    }
-
-    Thaw();
 }
 
 /// Delete this item
@@ -253,9 +192,6 @@ void wxThumbnailCtrl::Delete(int n) {
         cmdEvent.SetEventObject(this);
         GetEventHandler()->ProcessEvent(cmdEvent);
     }
-
-    if (m_tags.Index(n) != wxNOT_FOUND)
-        m_tags.Remove(n);
 
     m_items.RemoveAt(n);
 
@@ -504,41 +440,6 @@ void wxThumbnailCtrl::SetFocusItem(int item) {
     }
 }
 
-/// Tag or untag an item
-void wxThumbnailCtrl::Tag(int n, bool tag) {
-    wxASSERT(n < GetCount());
-
-    if (tag) {
-        if (m_tags.Index(n) == wxNOT_FOUND)
-            m_tags.Add(n);
-    } else {
-        if (m_tags.Index(n) != wxNOT_FOUND)
-            m_tags.Remove(n);
-    }
-
-    if (!IsFrozen()) {
-        wxRect rect;
-        GetItemRect(n, rect);
-        RefreshRect(rect);
-    }
-}
-
-/// Returns true if the item is tagged
-bool wxThumbnailCtrl::IsTagged(int n) const {
-    return (m_tags.Index(n) != wxNOT_FOUND);
-}
-
-/// Clears all tags
-void wxThumbnailCtrl::ClearTags() {
-    int count = GetCount();
-
-    m_tags.Clear();
-
-    if (count > 0 && !IsFrozen()) {
-        Refresh();
-    }
-}
-
 /// Painting
 void wxThumbnailCtrl::OnDraw(wxDC &dc) {
     if (IsFrozen())
@@ -569,8 +470,6 @@ void wxThumbnailCtrl::OnDraw(wxDC &dc) {
                 style |= wxTHUMBNAIL_IS_HOVER;
             if (IsSelected(i))
                 style |= wxTHUMBNAIL_SELECTED;
-            if (IsTagged(i))
-                style |= wxTHUMBNAIL_TAGGED;
             if (isFocussed)
                 style |= wxTHUMBNAIL_FOCUSSED;
             if (isFocussed && i == m_focusItem)
@@ -1288,16 +1187,7 @@ wxThumbnailItem::DrawBackground(wxDC &dc, wxThumbnailCtrl *ctrl, const wxRect &r
 
     dc.DrawRectangle(rect);
 
-    if (style & wxTHUMBNAIL_TAGGED) {
-        wxPen bluePen = ctrl->GetTagColour();
-        dc.SetPen(bluePen);
-
-        dc.DrawLine(rect.GetRight(), rect.GetTop(), rect.GetRight(), rect.GetBottom());
-        dc.DrawLine(rect.GetLeft(), rect.GetBottom(), rect.GetRight() + 1, rect.GetBottom());
-
-        dc.DrawLine(rect.GetLeft(), rect.GetTop(), rect.GetRight(), rect.GetTop());
-        dc.DrawLine(rect.GetLeft(), rect.GetTop(), rect.GetLeft(), rect.GetBottom());
-    } else if (ctrl->IsOutlinesShown()) {
+    if (ctrl->IsOutlinesShown()) {
         if (style & wxTHUMBNAIL_SELECTED) {
             dc.SetPen(*wxWHITE_PEN);
             dc.DrawLine(rect.GetRight(), rect.GetTop(), rect.GetRight(), rect.GetBottom());
@@ -1341,15 +1231,6 @@ wxThumbnailItem::DrawBackground(wxDC &dc, wxThumbnailCtrl *ctrl, const wxRect &r
         int y = fRect.y;
         dc.DrawText(m_label, x, y);
         dc.DestroyClippingRegion();
-    }
-    // Draw tag bitmap
-    if (style & wxTHUMBNAIL_TAGGED) {
-        const wxBitmap &tagBitmap = ctrl->GetTagBitmap();
-        if (tagBitmap.Ok()) {
-            int x = rect.x + rect.width - tagBitmap.GetWidth() - ctrl->GetThumbnailMargin();
-            int y = rect.y + ctrl->GetThumbnailMargin();
-            dc.DrawBitmap(tagBitmap, x, y, true);
-        }
     }
 
     // If the item itself is the focus, draw a dotted

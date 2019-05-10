@@ -44,14 +44,12 @@
 #define wxTHUMBNAIL_DEFAULT_FOCUSSED_BACKGROUND wxColour(140, 140, 140)
 #define wxTHUMBNAIL_DEFAULT_UNSELECTED_BACKGROUND wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE)
 #define wxTHUMBNAIL_DEFAULT_TYPE_COLOUR wxColour(0, 0, 200)
-#define wxTHUMBNAIL_DEFAULT_TAG_COLOUR wxColour(0, 0, 255)
 #define wxTHUMBNAIL_DEFAULT_FOCUS_RECT_COLOUR wxColour(100, 80, 80)
 
 class wxThumbnailCtrl;
 
 // Drawing styles/states
 #define wxTHUMBNAIL_SELECTED    0x01
-#define wxTHUMBNAIL_TAGGED      0x02
 // The control is focussed
 #define wxTHUMBNAIL_FOCUSSED    0x04
 // The item itself has the focus
@@ -117,9 +115,6 @@ public:
     /// Scrolls the item into view if necessary
     void EnsureVisible(int n);
 
-    /// Sorts items
-    void Sort();
-
     /// Show the tooltip
     virtual void ShowTooltip(int n);
 
@@ -169,9 +164,6 @@ public:
     /// Select or deselect a range
     void SelectRange(int from, int to, bool select = true);
 
-    /// Tag or untag an item
-    void Tag(int n, bool tag = true);
-
     /// Select all
     void SelectAll();
 
@@ -185,20 +177,11 @@ public:
     /// Get indexes of all selections, if multi-select
     const wxArrayInt &GetSelections() const { return m_selections; }
 
-    /// Get indexes of all tags
-    const wxArrayInt &GetTags() const { return m_tags; }
-
     /// Returns true if the item is selected
     bool IsSelected(int n) const;
 
-    /// Returns true if the item is tagged
-    bool IsTagged(int n) const;
-
     /// Clears all selections
     void ClearSelections();
-
-    /// Clears all tags
-    void ClearTags();
 
     /// Get mouse hover item
     int GetMouseHoverItem() const { return m_hoverItem; }
@@ -233,9 +216,6 @@ public:
 
     int GetThumbnailTextHeight() const { return m_thumbnailTextHeight; }
 
-    /// Get tag bitmap
-    const wxBitmap &GetTagBitmap() const { return m_tagBitmap; }
-
     /// The focussed and unfocussed background colour for a
     /// selected thumbnail
     void SetSelectedThumbnailBackgroundColour(const wxColour &focussedColour, const wxColour &unfocussedColour) {
@@ -258,11 +238,6 @@ public:
     void SetTypeColour(const wxColour &colour) { m_typeColour = colour; }
 
     const wxColour &GetTypeColour() const { return m_typeColour; }
-
-    /// The colour for the tag outline
-    void SetTagColour(const wxColour &colour) { m_tagColour = colour; }
-
-    const wxColour &GetTagColour() const { return m_tagColour; }
 
     /// The focus rectangle pen colour
     void SetFocusRectColour(const wxColour &colour) { m_focusRectColour = colour; }
@@ -344,9 +319,6 @@ protected:
     /// Paint the background
     void PaintBackground(wxDC &dc);
 
-    /// Thumbnails compare function
-    virtual int Compare(wxThumbnailItem **item1, wxThumbnailItem **item2);
-
 private:
     /// Member initialisation
     void Init();
@@ -356,9 +328,6 @@ private:
 
     /// The selections
     wxArrayInt m_selections;
-
-    /// The tags
-    wxArrayInt m_tags;
 
     /// Outer size of the thumbnail item
     wxSize m_thumbnailOverallSize;
@@ -384,9 +353,6 @@ private:
     /// Focus item
     int m_focusItem;
 
-    /// Tag marker bitmap
-    wxBitmap m_tagBitmap;
-
     /// Outlines flag
     bool m_showOutlines;
 
@@ -404,9 +370,6 @@ private:
 
     /// Type text colour
     wxColour m_typeColour;
-
-    /// Tag colour
-    wxColour m_tagColour;
 
     /// Drag start position
     wxPoint m_dragStartPosition = wxDefaultPosition;
