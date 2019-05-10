@@ -1,10 +1,8 @@
-add_subdirectory(gl3w)
-add_subdirectory(imgui)
-
-find_package(Threads REQUIRED)
+find_package(wxWidgets COMPONENTS core base REQUIRED)
+include(${wxWidgets_USE_FILE})
 
 aux_source_directory(. GUI_SRCS)
 
-add_executable(GUI ${GUI_SRCS})
-target_link_libraries(GUI "${OpenCV_LIBS}" gl3w imgui stdc++fs Threads::Threads)
+add_executable(GUI "${GUI_SRCS}")
+target_link_libraries(GUI "${wxWidgets_LIBRARIES}" "${OpenCV_LIBS}" stdc++fs)
 target_include_directories(GUI PRIVATE "${PROJECT_BINARY_DIR}")

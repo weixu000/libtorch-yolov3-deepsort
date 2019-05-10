@@ -1,180 +1,175 @@
-#include <algorithm>
-#include <iostream>
-#include <chrono>
+#include <wx/wxprec.h>
+
+#ifndef WX_PRECOMP
+
+#include <wx/wx.h>
+
+#endif
+
+#include <wx/progdlg.h>
 #include <opencv2/opencv.hpp>
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_glfw.h"
-#include "imgui/imgui_impl_opengl3.h"
-
-#if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
-
-#include <GL/gl3w.h>    // Initialize with gl3wInit()
-
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
-#include <GL/glew.h>    // Initialize with glewInit()
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
-#include <glad/glad.h>  // Initialize with gladLoadGL()
-#else
-#include IMGUI_IMPL_OPENGL_LOADER_CUSTOM
-#endif
-
-#include <GLFW/glfw3.h>
-
+#include "thumbnailctrl.h"
+#include "TargetRepo.h"
 #include "util.h"
+#include "wxplayer.h"
 
-using namespace std;
+class MyApp : public wxApp {
+public:
+    bool OnInit() override;
+};
 
-namespace {
-    void glfw_error_callback(int error, const char *description) {
-        cerr << "Glfw Error" << error << ": " << description << endl;
-    }
+wxIMPLEMENT_APP(MyApp);
 
-    GLFWwindow *setup_UI() {
-        // Setup window
-        glfwSetErrorCallback(glfw_error_callback);
-        if (!glfwInit())
-            return nullptr;
+class MyFrame : public wxFrame {
+public:
+    MyFrame();
 
-        // Decide GL+GLSL versions
-#if __APPLE__
-        // GL 3.2 + GLSL 150
-    const char* glsl_version = "#version 150";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
-#else
-        // GL 3.0 + GLSL 130
-        const char *glsl_version = "#version 130";
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-        //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-        //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
-#endif
+private:
+    void InitMenu();
 
-        // Create window with graphics context
-        GLFWwindow *window = glfwCreateWindow(1280, 720, "YOLO+SORT+ImGui", NULL, NULL);
-        if (!window)
-            return nullptr;
-        glfwMakeContextCurrent(window);
-        glfwSwapInterval(1); // Enable vsync
+    wxThumbnailCtrl *InitThumbnails();
 
-        // Initialize OpenGL loader
-#if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
-        bool err = gl3wInit() != 0;
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
-        bool err = glewInit() != GLEW_OK;
-#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
-    bool err = gladLoadGL() == 0;
-#else
-    bool err = false; // If you use IMGUI_IMPL_OPENGL_LOADER_CUSTOM, your loader is likely to requires some form of initialization.
-#endif
-        if (err) {
-            fprintf(stderr, "Failed to initialize OpenGL loader!\n");
-            return nullptr;
-        }
-
-        // Setup Dear ImGui context
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-
-        // Setup Dear ImGui style
-        ImGui::StyleColorsDark();
-        //ImGui::StyleColorsClassic();
-
-        // Setup Platform/Renderer bindings
-        ImGui_ImplGlfw_InitForOpenGL(window, true);
-        ImGui_ImplOpenGL3_Init(glsl_version);
-
-        return window;
-    }
-}
-
-int main() {
-    cv::VideoCapture cap("result/compressed.flv");
-    if (!cap.isOpened()) {
-        cerr << "Cannot open the video" << endl;
-        return -2;
-    }
-
-    auto video_FPS = static_cast<int>(cap.get(cv::CAP_PROP_FPS));
+    wxPlayer *player;
 
     TargetRepo repo;
 
-    auto image = cv::Mat(int(cap.get(cv::CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv::CAP_PROP_FRAME_WIDTH)),
-                         CV_8UC3, {0, 0, 0});
+    int hovered = -1;
 
-    auto window = setup_UI();
-    if (!window) {
-        cerr << "GUI failed" << endl;
-        return -1;
+    enum {
+        ID_Hello = 1,
+        ID_Timer,
+        ID_List,
+    };
+};
+
+
+bool MyApp::OnInit() {
+    auto frame = new MyFrame;
+    frame->Show(true);
+    return true;
+}
+
+MyFrame::MyFrame()
+        : wxFrame(nullptr, wxID_ANY, "YOLO+DeepSORT+wxWidgets") {
+    InitMenu();
+
+    player = new wxPlayer(this, wxID_ANY, "/home/wei-x15/Downloads/PETS09-S2L1.mp4",
+                          [this](cv::Mat mat, int display_frame) {
+                              for (auto &[id, t]:repo.get()) {
+                                  if (t.trajectories.count(display_frame)) {
+                                      auto color =
+                                              hovered == -1 ? color_map(id) : hovered == id ? cv::Scalar(0, 0, 255)
+                                                                                            : cv::Scalar(0, 0, 0);
+                                      draw_trajectories(mat, t.trajectories, color);
+                                      draw_bbox(mat, t.trajectories.at(display_frame),
+                                                std::to_string(id), color);
+                                  }
+                              }
+                              return mat;
+                          });
+
+    auto sizer = new wxBoxSizer(wxHORIZONTAL);
+    sizer->Add(player, 3, wxEXPAND | wxALL);
+    sizer->Add(InitThumbnails(), 1, wxEXPAND | wxALL);
+    SetSizerAndFit(sizer);
+}
+
+void MyFrame::InitMenu() {
+    auto menuFile = new wxMenu;
+    menuFile->Append(ID_Hello, "&Hello...\tCtrl-H",
+                     "Help string shown in status bar for this menu item");
+    menuFile->AppendSeparator();
+    menuFile->Append(wxID_EXIT);
+
+    auto menuHelp = new wxMenu;
+    menuHelp->Append(wxID_ABOUT);
+
+    auto menuBar = new wxMenuBar;
+    menuBar->Append(menuFile, "&File");
+    menuBar->Append(menuHelp, "&Help");
+    SetMenuBar(menuBar);
+
+    CreateStatusBar();
+    SetStatusText("Welcome to wxWidgets!");
+
+    Bind(wxEVT_MENU,
+         [this](wxCommandEvent &) {
+             wxLogMessage("Hello world from wxWidgets!");
+         }, ID_Hello);
+    Bind(wxEVT_MENU,
+         [this](wxCommandEvent &) {
+             wxMessageBox("This is a wxWidgets Hello World example",
+                          "About Hello World", wxOK | wxICON_INFORMATION);
+         }, wxID_ABOUT);
+    Bind(wxEVT_MENU,
+         [this](wxCommandEvent &) {
+             Close(true);
+         }, wxID_EXIT);
+}
+
+wxThumbnailCtrl *MyFrame::InitThumbnails() {
+    auto dialog = wxProgressDialog("Loading results", wxEmptyString);
+    repo.load([&dialog](int value) { dialog.Update(value / 2, "Loading targets..."); });
+    auto thumbnails = new wxThumbnailCtrl(this, ID_List);
+    thumbnails->SetThumbnailImageSize(wxSize(50, 50));
+    int i_target = 0;
+    for (auto &[id, t]:repo.get()) {
+        for (auto &[s_t, s]:t.snapshots) {
+            cv::cvtColor(s, s, cv::COLOR_BGR2RGB);
+            cv::resize(s, s, cv::Size(50, 50));
+        }
+        auto item = new wxThumbnailItem(wxString::Format("%d", id));
+        item->SetState(id);
+        item->GetBitmap() = cvMat2wxImage(t.snapshots.begin()->second);
+        thumbnails->Append(item);
+        dialog.Update(50 + 50 * ++i_target / repo.get().size(), "Loading resources...");
     }
 
-    array<GLuint, 3> texture;
-    glGenTextures(texture.size(), texture.data());
+    static std::map<int, cv::Mat>::const_iterator it{};
+    auto timer = new wxTimer(thumbnails, ID_Timer);
+    thumbnails->Bind(wxEVT_TIMER,
+                     [this, thumbnails](wxTimerEvent &) {
+                         if (thumbnails->GetMouseHoverItem() != wxNOT_FOUND) {
+                             auto &item = *thumbnails->GetItem(thumbnails->GetMouseHoverItem());
+                             auto &snapshots = repo.get().at(item.GetState()).snapshots;
+                             item.GetBitmap() = cvMat2wxImage(it->second);
+                             item.Refresh(thumbnails, thumbnails->GetMouseHoverItem());
+                             if (++it == snapshots.end()) {
+                                 it = snapshots.begin();
+                             }
+                         }
+                     }, ID_Timer);
+    timer->Start(1000 * 5 / player->GetFPS());
+    thumbnails->Bind(wxEVT_COMMAND_THUMBNAIL_ITEM_HOVER_CHANGED,
+                     [this, thumbnails](wxThumbnailEvent &event) {
+                         if (event.GetIndex() != wxNOT_FOUND) {
+                             auto &item = *thumbnails->GetItem(event.GetIndex());
+                             item.GetBitmap() = cvMat2wxImage(repo.get().at(item.GetState()).snapshots.begin()->second);
+                         }
 
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
+                         if (thumbnails->GetMouseHoverItem() != wxNOT_FOUND) {
+                             auto &item = *thumbnails->GetItem(thumbnails->GetMouseHoverItem());
+                             it = repo.get().at(item.GetState()).snapshots.begin();
+                         }
+                     }, ID_List);
 
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
+    thumbnails->Bind(wxEVT_COMMAND_THUMBNAIL_ITEM_SELECTED,
+                     [this, thumbnails](wxThumbnailEvent &event) {
+                         auto id = thumbnails->GetItem(event.GetIndex())->GetState();
+                         player->Seek(repo.get().at(id).trajectories.begin()->first);
+                     }, ID_List);
 
-        static auto show_demo_window = false;
-        static auto show_res_window = true;
-        static auto show_target_window = true;
-        static auto playing = false;
+    thumbnails->Bind(wxEVT_COMMAND_THUMBNAIL_ITEM_HOVER_CHANGED,
+                     [this, thumbnails](wxThumbnailEvent &event) {
+                         if (thumbnails->GetMouseHoverItem() != wxNOT_FOUND) {
+                             hovered = thumbnails->GetItem(thumbnails->GetMouseHoverItem())->GetState();
+                         } else {
+                             hovered = -1;
+                         }
+                         Refresh();
+                         event.Skip();
+                     }, ID_List);
 
-        bool next;
-        draw_control_window(cap, repo.processed() + 1, show_demo_window, show_res_window, show_target_window,
-                            playing, next);
-
-        if (show_demo_window)
-            ImGui::ShowDemoWindow(&show_demo_window);
-
-        int hovered = -1;
-        if (show_target_window) {
-            auto[h, rewind] = draw_target_window(repo, video_FPS, &show_target_window);
-            hovered = h;
-            if (rewind != -1) {
-                cap.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(rewind));
-                next = true;
-            }
-        }
-
-        static auto prev = chrono::steady_clock::now();
-        if (auto elapsed = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - prev);
-                elapsed.count() > 1000 / video_FPS && (playing || next) && cap.grab()) {
-            prev += elapsed;
-            cap.retrieve(image);
-        }
-
-        if (show_res_window)
-            draw_res_window(image, repo, static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES)) - 1,
-                            hovered, &show_res_window);
-
-        // Rendering
-        ImGui::Render();
-        int display_w, display_h;
-        glfwMakeContextCurrent(window);
-        glfwGetFramebufferSize(window, &display_w, &display_h);
-        glViewport(0, 0, display_w, display_h);
-        glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-        glfwMakeContextCurrent(window);
-        glfwSwapBuffers(window);
-    }
-
-    // Cleanup
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-
-    glfwDestroyWindow(window);
-    glfwTerminate();
-
-    return 0;
+    return thumbnails;
 }

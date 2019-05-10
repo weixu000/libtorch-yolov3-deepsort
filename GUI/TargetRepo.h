@@ -2,44 +2,27 @@
 #define TARGET_H
 
 #include <map>
+#include <functional>
 #include <fstream>
-#include <thread>
-#include <mutex>
 #include <opencv2/opencv.hpp>
-#include <opencv2/core/opengl.hpp>
 
 struct Target {
     std::map<int, cv::Rect2f> trajectories;
-    std::map<int, cv::ogl::Texture2D> snapshots_tex;
     std::map<int, cv::Mat> snapshots;
 };
 
 class TargetRepo {
 public:
-    TargetRepo() : load_thread(&TargetRepo::load, this) {}
-
-    ~TargetRepo() {
-        stop = true;
-        load_thread.join();
-    }
-
     using container_t = std::map<int, Target>;
 
-    const container_t &get() const;
-
-    void finished_get() const;
+    container_t &get() { return targets; }
 
     int processed() const;
 
+    void load(const std::function<void(int)> &show_progress);
+
 private:
-    std::thread load_thread;
-
-    void load();
-
-    volatile bool stop = false;
-
-    mutable container_t targets;
-    mutable std::mutex targets_mutex;
+    container_t targets;
 
     std::map<int, std::ifstream> trks_files;
 };
