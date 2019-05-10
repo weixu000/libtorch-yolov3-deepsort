@@ -67,18 +67,28 @@ BEGIN_EVENT_TABLE(wxThumbnailCtrl, wxScrolledWindow)
                 EVT_UPDATE_UI(wxID_SELECTALL, wxThumbnailCtrl::OnUpdateSelectAll)
 END_EVENT_TABLE()
 
-wxThumbnailCtrl *wxThumbnailCtrl::sm_currentThumbnailCtrl = nullptr;
-
 /*!
  * wxThumbnailCtrl
  */
 
 wxThumbnailCtrl::wxThumbnailCtrl() {
-    Init();
+    m_thumbnailOverallSize = wxTHUMBNAIL_DEFAULT_OVERALL_SIZE;
+    m_thumbnailImageSize = wxTHUMBNAIL_DEFAULT_IMAGE_SIZE;
+    m_spacing = wxTHUMBNAIL_DEFAULT_SPACING;
+    m_thumbnailMargin = wxTHUMBNAIL_DEFAULT_MARGIN;
+    m_firstSelection = -1;
+    m_lastSelection = -1;
+    m_focussedThumbnailBackgroundColour = wxTHUMBNAIL_DEFAULT_FOCUSSED_BACKGROUND;
+    m_unfocussedThumbnailBackgroundColour = wxTHUMBNAIL_DEFAULT_UNFOCUSSED_BACKGROUND;
+    m_unselectedThumbnailBackgroundColour = wxTHUMBNAIL_DEFAULT_UNSELECTED_BACKGROUND;
+    m_typeColour = wxTHUMBNAIL_DEFAULT_TYPE_COLOUR;
+    m_focusRectColour = wxTHUMBNAIL_DEFAULT_FOCUS_RECT_COLOUR;
+    m_focusItem = -1;
+    m_showOutlines = false;
 }
 
-wxThumbnailCtrl::wxThumbnailCtrl(wxWindow *parent, wxWindowID id, const wxPoint &pos, const wxSize &size, long style) {
-    Init();
+wxThumbnailCtrl::wxThumbnailCtrl(wxWindow *parent, wxWindowID id, const wxPoint &pos, const wxSize &size, long style)
+        : wxThumbnailCtrl() {
     Create(parent, id, pos, size, style);
 }
 
@@ -96,27 +106,9 @@ bool wxThumbnailCtrl::Create(wxWindow *parent, wxWindowID id, const wxPoint &pos
     SetBackgroundStyle(wxBG_STYLE_CUSTOM);
 
     // Tell the sizers to use the given or best size    
-    // SetBestFittingSize(size);
     SetInitialSize(size);
 
     return true;
-}
-
-/// Member initialisation
-void wxThumbnailCtrl::Init() {
-    m_thumbnailOverallSize = wxTHUMBNAIL_DEFAULT_OVERALL_SIZE;
-    m_thumbnailImageSize = wxTHUMBNAIL_DEFAULT_IMAGE_SIZE;
-    m_spacing = wxTHUMBNAIL_DEFAULT_SPACING;
-    m_thumbnailMargin = wxTHUMBNAIL_DEFAULT_MARGIN;
-    m_firstSelection = -1;
-    m_lastSelection = -1;
-    m_focussedThumbnailBackgroundColour = wxTHUMBNAIL_DEFAULT_FOCUSSED_BACKGROUND;
-    m_unfocussedThumbnailBackgroundColour = wxTHUMBNAIL_DEFAULT_UNFOCUSSED_BACKGROUND;
-    m_unselectedThumbnailBackgroundColour = wxTHUMBNAIL_DEFAULT_UNSELECTED_BACKGROUND;
-    m_typeColour = wxTHUMBNAIL_DEFAULT_TYPE_COLOUR;
-    m_focusRectColour = wxTHUMBNAIL_DEFAULT_FOCUS_RECT_COLOUR;
-    m_focusItem = -1;
-    m_showOutlines = false;
 }
 
 /// Append a single item
@@ -422,7 +414,7 @@ void wxThumbnailCtrl::ClearSelections() {
 /// Set the focus item
 void wxThumbnailCtrl::SetFocusItem(int item) {
     wxASSERT(item < GetCount());
-    if (item < GetCount()) {
+    if (item != m_focusItem) {
         int oldFocusItem = m_focusItem;
         m_focusItem = item;
 
@@ -483,12 +475,12 @@ void wxThumbnailCtrl::OnDraw(wxDC &dc) {
     }
 }
 
-void wxThumbnailCtrl::OnSetFocus(wxFocusEvent & WXUNUSED(event)) {
+void wxThumbnailCtrl::OnSetFocus(wxFocusEvent &) {
     if (GetCount() > 0)
         Refresh();
 }
 
-void wxThumbnailCtrl::OnKillFocus(wxFocusEvent & WXUNUSED(event)) {
+void wxThumbnailCtrl::OnKillFocus(wxFocusEvent &) {
     if (GetCount() > 0)
         Refresh();
 }
@@ -549,7 +541,7 @@ void wxThumbnailCtrl::OnLeftClickDown(wxMouseEvent &event) {
 
         EnsureVisible(n);
 
-        bool change = false;
+        auto change = false;
 
         if (((GetWindowStyle() & wxTH_MULTIPLE_SELECT) != 0))
             change = !IsSelected(n) || (flags != 0);
@@ -604,8 +596,7 @@ void wxThumbnailCtrl::OnRightClickDown(wxMouseEvent &event) {
         if (event.AltDown())
             flags |= wxTHUMBNAIL_ALT_DOWN;
 
-        if (m_focusItem != n)
-            SetFocusItem(n);
+        SetFocusItem(n);
 
         const wxArrayInt &selections = GetSelections();
         if (std::find(selections.begin(), selections.end(), n) == selections.end()) {
@@ -642,8 +633,7 @@ void wxThumbnailCtrl::OnRightClickUp(wxMouseEvent &event) {
 
     int n;
     if (HitTest(event.GetPosition(), n)) {
-        if (m_focusItem != n)
-            SetFocusItem(n);
+        SetFocusItem(n);
 
         const wxArrayInt &selections = GetSelections();
         if (std::find(selections.begin(), selections.end(), n) != selections.end()) {
@@ -702,10 +692,8 @@ void wxThumbnailCtrl::OnMouseMotion(wxMouseEvent &event) {
     int n;
     if (HitTest(event.GetPosition(), n)) {
         SetMouseHoverItem(n, flags);
-        ShowTooltip(n);
     } else {
         SetMouseHoverItem(wxNOT_FOUND, flags);
-        UnsetToolTip();
     }
 
     event.Skip();
@@ -962,17 +950,6 @@ void wxThumbnailCtrl::SetupScrollbars() {
                   wxMin(maxPositionX, startX), wxMin(maxPositionY, startY));
 }
 
-/// Show the tooltip
-void wxThumbnailCtrl::ShowTooltip(int n) {
-    if (wxNOT_FOUND != n) {
-        auto *item = GetItem(n);
-        const wxString tooltip = item->GetLabel();
-
-        if (GetToolTipText() != tooltip)
-            SetToolTip(tooltip);
-    }
-}
-
 /// Draws the background for the item, including bevel
 bool wxThumbnailCtrl::DrawItem(int n, wxDC &dc, const wxRect &rect, const wxRect &imageRect, int style) {
     auto item = GetItem(n);
@@ -1103,7 +1080,7 @@ bool wxThumbnailCtrl::HitTest(const wxPoint &pt, int &n) {
     return false;
 }
 
-void wxThumbnailCtrl::OnSelectAll(wxCommandEvent & WXUNUSED(event)) {
+void wxThumbnailCtrl::OnSelectAll(wxCommandEvent &) {
     SelectAll();
 }
 
@@ -1163,7 +1140,7 @@ bool wxThumbnailItem::Refresh(wxThumbnailCtrl *ctrl, int index) {
 /// You have to ovveride this function inorder to provide your implementaion.
 bool
 wxThumbnailItem::DrawBackground(wxDC &dc, wxThumbnailCtrl *ctrl, const wxRect &rect, const wxRect &imageRect, int style,
-                                int WXUNUSED(index)) {
+                                int) {
     auto mediumGrey = ctrl->GetUnselectedThumbnailBackgroundColour();
     auto unfocussedDarkGrey = ctrl->GetSelectedThumbnailUnfocussedBackgroundColour();
     auto focussedDarkGrey = ctrl->GetSelectedThumbnailFocussedBackgroundColour();
@@ -1251,8 +1228,7 @@ wxThumbnailItem::DrawBackground(wxDC &dc, wxThumbnailCtrl *ctrl, const wxRect &r
 }
 
 /// Draw the item
-bool wxThumbnailItem::Draw(wxDC &dc, wxThumbnailCtrl * WXUNUSED(ctrl), const wxRect &rect, int WXUNUSED(style),
-                           int WXUNUSED(index)) {
+bool wxThumbnailItem::Draw(wxDC &dc, wxThumbnailCtrl *, const wxRect &rect, int, int) {
     if (m_bitmap.Ok()) {
         dc.DrawBitmap(m_bitmap, rect.GetX(), rect.GetY());
     }

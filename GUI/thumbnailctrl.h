@@ -69,6 +69,7 @@ public:
     }
 
     const wxString &GetLabel() const { return m_label; }
+
     /// Refresh the item
     virtual bool Refresh(wxThumbnailCtrl *ctrl, int index);
 
@@ -107,9 +108,6 @@ public:
 
     /// Scrolls the item into view if necessary
     void EnsureVisible(int n);
-
-    /// Show the tooltip
-    virtual void ShowTooltip(int n);
 
     /// Append a single item
     virtual int Append(wxThumbnailItem *item);
@@ -313,9 +311,6 @@ protected:
     void PaintBackground(wxDC &dc);
 
 private:
-    /// Member initialisation
-    void Init();
-
     /// The items
     wxThumbnailItemArray m_items;
 
@@ -351,9 +346,6 @@ private:
 
     /// Mouse hover item
     int m_hoverItem = wxNOT_FOUND;
-
-    /// Current control, used in sorting
-    static wxThumbnailCtrl *sm_currentThumbnailCtrl;
 
     /// Focussed/unfocussed selected thumbnail background colours
     wxColour m_focussedThumbnailBackgroundColour;
