@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
-project(MyProject)
+project(libtorch-yolov3)
 
 find_package(OpenCV REQUIRED)
 find_package(Torch REQUIRED)
