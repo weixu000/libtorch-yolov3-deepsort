@@ -120,7 +120,6 @@ wxThumbnailCtrl *MyFrame::InitThumbnails() {
             cv::resize(s, s, cv::Size(50, 50));
         }
         auto item = new wxThumbnailItem(wxString::Format("%d", id));
-        item->SetState(id);
         item->GetBitmap() = cvMat2wxImage(t.snapshots.begin()->second);
         thumbnails->Append(item);
         dialog.Update(50 + 50 * ++i_target / repo.get().size(), "Loading resources...");
@@ -132,7 +131,7 @@ wxThumbnailCtrl *MyFrame::InitThumbnails() {
                      [this, thumbnails](wxTimerEvent &) {
                          if (thumbnails->GetMouseHoverItem() != wxNOT_FOUND) {
                              auto &item = *thumbnails->GetItem(thumbnails->GetMouseHoverItem());
-                             auto &snapshots = repo.get().at(item.GetState()).snapshots;
+                             auto &snapshots = repo.get().at(wxAtoi(item.GetLabel())).snapshots;
                              item.GetBitmap() = cvMat2wxImage(it->second);
                              item.Refresh(thumbnails, thumbnails->GetMouseHoverItem());
                              if (++it == snapshots.end()) {
@@ -145,25 +144,26 @@ wxThumbnailCtrl *MyFrame::InitThumbnails() {
                      [this, thumbnails](wxThumbnailEvent &event) {
                          if (event.GetIndex() != wxNOT_FOUND) {
                              auto &item = *thumbnails->GetItem(event.GetIndex());
-                             item.GetBitmap() = cvMat2wxImage(repo.get().at(item.GetState()).snapshots.begin()->second);
+                             item.GetBitmap() = cvMat2wxImage(
+                                     repo.get().at(wxAtoi(item.GetLabel())).snapshots.begin()->second);
                          }
 
                          if (thumbnails->GetMouseHoverItem() != wxNOT_FOUND) {
                              auto &item = *thumbnails->GetItem(thumbnails->GetMouseHoverItem());
-                             it = repo.get().at(item.GetState()).snapshots.begin();
+                             it = repo.get().at(wxAtoi(item.GetLabel())).snapshots.begin();
                          }
                      }, ID_List);
 
     thumbnails->Bind(wxEVT_COMMAND_THUMBNAIL_ITEM_SELECTED,
                      [this, thumbnails](wxThumbnailEvent &event) {
-                         auto id = thumbnails->GetItem(event.GetIndex())->GetState();
+                         auto id = wxAtoi(thumbnails->GetItem(event.GetIndex())->GetLabel());
                          player->Seek(repo.get().at(id).trajectories.begin()->first);
                      }, ID_List);
 
     thumbnails->Bind(wxEVT_COMMAND_THUMBNAIL_ITEM_HOVER_CHANGED,
                      [this, thumbnails](wxThumbnailEvent &event) {
                          if (thumbnails->GetMouseHoverItem() != wxNOT_FOUND) {
-                             hovered = thumbnails->GetItem(thumbnails->GetMouseHoverItem())->GetState();
+                             hovered = wxAtoi(thumbnails->GetItem(thumbnails->GetMouseHoverItem())->GetLabel());
                          } else {
                              hovered = -1;
                          }

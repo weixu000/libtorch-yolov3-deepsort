@@ -60,7 +60,7 @@ class wxThumbnailItem : public wxObject {
 DECLARE_CLASS(wxThumbnailItem)
 
 public:
-    explicit wxThumbnailItem(const wxString &label = wxEmptyString) : m_label(label), m_state(0) {}
+    explicit wxThumbnailItem(const wxString &label = wxEmptyString) : m_label(label) {}
 
     /// Label
     void SetLabel(const wxString &filename) {
@@ -69,12 +69,6 @@ public:
     }
 
     const wxString &GetLabel() const { return m_label; }
-
-    /// State storage while sorting
-    void SetState(int state) { m_state = state; }
-
-    int GetState() const { return m_state; }
-
     /// Refresh the item
     virtual bool Refresh(wxThumbnailCtrl *ctrl, int index);
 
@@ -90,7 +84,6 @@ public:
 private:
     wxBitmap m_bitmap;
     wxString m_label;
-    int m_state; // state storage while sorting
 };
 
 WX_DECLARE_OBJARRAY(wxThumbnailItem, wxThumbnailItemArray);
