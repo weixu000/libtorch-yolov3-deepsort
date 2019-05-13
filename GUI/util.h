@@ -86,13 +86,15 @@ namespace {
         if (traj.size() < 2) return;
 
         auto cur = traj.begin()->second;
-        auto pt1 = (cur.tl() + cur.br()) / 2;
+        auto pt1 = cur.br();
+        pt1.x -= cur.width / 2;
         pt1.x *= img.cols;
         pt1.y *= img.rows;
 
         for (auto it = ++traj.begin(); it != traj.end(); ++it) {
             cur = it->second;
-            auto pt2 = (cur.tl() + cur.br()) / 2;
+            auto pt2 = cur.br();
+            pt2.x -= cur.width / 2;
             pt2.x *= img.cols;
             pt2.y *= img.rows;
             cv::line(img, pt1, pt2, color);
