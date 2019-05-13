@@ -164,8 +164,10 @@ wxThumbnailCtrl *MyFrame::InitThumbnails() {
                      [this, thumbnails](wxThumbnailEvent &event) {
                          if (thumbnails->GetMouseHoverItem() != wxNOT_FOUND) {
                              hovered = wxAtoi(thumbnails->GetItem(thumbnails->GetMouseHoverItem())->GetLabel());
+                             player->Refresh();
                          } else {
                              hovered = -1;
+                             player->Refresh();
                          }
                          Refresh();
                          event.Skip();
