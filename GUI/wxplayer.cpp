@@ -9,10 +9,12 @@ wxPlayer::wxPlayer(wxWindow *parent, wxWindowID id,
         throw;
     }
 
-    mat = cv::Mat::zeros(capture.get(cv::CAP_PROP_FRAME_WIDTH), capture.get(cv::CAP_PROP_FRAME_HEIGHT), CV_8UC3);
+    auto video_size = wxSize(capture.get(cv::CAP_PROP_FRAME_WIDTH), capture.get(cv::CAP_PROP_FRAME_HEIGHT));
+    mat = cv::Mat::zeros(video_size.GetWidth(), video_size.GetHeight(), CV_8UC3);
     bitmap = new wxGenericStaticBitmap(this, wxID_ANY, wxNullBitmap);
     bitmap->Bind(wxEVT_SIZE, [this](wxSizeEvent &) { RescaleToBitmap(); });
-    bitmap->SetMaxClientSize(wxSize(capture.get(cv::CAP_PROP_FRAME_WIDTH), capture.get(cv::CAP_PROP_FRAME_HEIGHT)));
+    bitmap->SetMinClientSize(video_size / 5);
+    bitmap->SetMaxClientSize(video_size);
 
     timer = new wxTimer(this, ID_Timer);
     Bind(wxEVT_TIMER,
