@@ -54,7 +54,7 @@ MyFrame::MyFrame()
         : wxFrame(nullptr, wxID_ANY, "YOLO+DeepSORT+wxWidgets") {
     InitMenu();
 
-    player = new wxPlayer(this, wxID_ANY, "/home/wei-x15/Downloads/PETS09-S2L1.mp4",
+    player = new wxPlayer(this, wxID_ANY, repo.video_path(),
                           [this](cv::Mat mat, int display_frame) {
                               for (auto &[id, t]:repo.get()) {
                                   if (t.trajectories.count(display_frame)) {

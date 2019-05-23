@@ -9,6 +9,7 @@
 
 #endif
 
+#include <functional>
 #include <opencv2/opencv.hpp>
 
 

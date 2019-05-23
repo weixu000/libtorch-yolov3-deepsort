@@ -17,7 +17,7 @@ public:
 
     container_t &get() { return targets; }
 
-    int processed() const;
+    std::string video_path();
 
     void load(const std::function<void(int)> &show_progress);
 

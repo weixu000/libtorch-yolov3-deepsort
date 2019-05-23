@@ -46,11 +46,6 @@ void TargetRepo::load(const std::function<void(int)> &show_progress) {
     }
 }
 
-int TargetRepo::processed() const {
-    int processed_frame = 0;
-    for (auto &[id, t]:targets) {
-        if (t.trajectories.empty()) continue;
-        processed_frame = max(processed_frame, t.trajectories.rbegin()->first);
-    }
-    return processed_frame;
+std::string TargetRepo::video_path() {
+    return (fs::path(OUTPUT_DIR) / VIDEO_NAME).string();
 }
