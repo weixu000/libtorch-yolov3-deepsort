@@ -16,14 +16,16 @@ public:
     void update(const std::vector<Track> &trks,
                 int frame, const cv::Mat &image);
 
-private:
-    void record();
-
     struct Target {
         std::map<int, cv::Rect2f> trajectories;
         std::map<int, cv::Mat> snapshots;
         int last_snap = 0;
     };
+
+    const std::map<int, Target> &get() const { return targets; }
+
+private:
+    void record();
 
     static constexpr float padding = 0.1f;
 

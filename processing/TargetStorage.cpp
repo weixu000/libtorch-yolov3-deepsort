@@ -45,15 +45,16 @@ void TargetStorage::record() {
 
         ofstream fp(dir_path / TRAJ_TXT_NAME, ios::app);
         fp << right << fixed << setprecision(3);
-        for (auto &[frame, box]:t.trajectories) {
+        while (t.trajectories.size() > 20) {
+            auto &[frame, box] = *t.trajectories.begin();
             fp << setw(6) << frame
                << setw(6) << box.x
                << setw(6) << box.y
                << setw(6) << box.width
                << setw(6) << box.height
                << setw(6) << endl;
+            t.trajectories.erase(t.trajectories.begin());
         }
-        t.trajectories.clear();
 
         dir_path /= SNAPSHOTS_DIR_NAME;
         fs::create_directories(dir_path);
