@@ -1,11 +1,17 @@
-# libtorch-yolov3
-A Libtorch implementation of the YOLO v3 object detection algorithm, written with pure C++. It's fast, easy to be integrated to your production, and supports CPU and GPU computation. Enjoy ~
+# Overview
+There are four modules in the project:
+- Detection: YOLOv3
+- Tracking: SORT and DeepSORT
+- Processing: Run detection and tracking, then display and save the results (a compressed video, a few snapshots for each target)
+- GUI: Display the results
 
-The code is based on the [pytorch version](https://github.com/ayooshkathuria/pytorch-yolo-v3) (without GUI and DeepSORT), I rewritten it with C++.
+# YOLOv3
+A Libtorch implementation of the YOLO v3 object detection algorithm, written with modern C++.
+
+The code is based on the [walktree](https://github.com/walktree/libtorch-yolov3).
 
 # SORT
-The former code is from [walktree](https://github.com/walktree/libtorch-yolov3).
-However, I also merged [C++ version of SORT](https://github.com/mcximing/sort-cpp) to do tracking.
+I also merged [SORT](https://github.com/mcximing/sort-cpp) to do tracking.
 
 A similar software in Python is [here](https://github.com/weixu000/pytorch-yolov3), which also rewrite form [the most starred version](https://github.com/ayooshkathuria/pytorch-yolo-v3) and [SORT](https://github.com/abewley/sort)
 
