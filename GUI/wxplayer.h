@@ -9,6 +9,8 @@
 
 #endif
 
+#include <wx/generic/statbmpg.h>
+
 #include <functional>
 #include <opencv2/opencv.hpp>
 
@@ -17,7 +19,7 @@ class wxPlayer : public wxWindow {
 public:
     explicit wxPlayer(wxWindow *parent, wxWindowID id,
                       const wxString &file,
-                      const std::function<cv::Mat(cv::Mat, int)> &post);
+                      const std::function<void(cv::Mat &, int)> &post);
 
     int GetFrame() { return capture.get(cv::CAP_PROP_POS_FRAMES) - 1; }
 
@@ -34,13 +36,16 @@ public:
 private:
     void LoadNext();
 
-    wxStaticBitmap *bitmap = nullptr;
+    wxGenericStaticBitmap *bitmap = nullptr;
     wxSlider *progress = nullptr;
     wxTimer *timer = nullptr;
 
     cv::VideoCapture capture;
 
-    std::function<cv::Mat(cv::Mat, int)> post;
+    std::function<void(cv::Mat &, int)> post;
+    cv::Mat mat;
+
+    void RescaleToBitmap();
 
     enum {
         ID_Timer = 1,

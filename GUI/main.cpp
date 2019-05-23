@@ -55,7 +55,7 @@ MyFrame::MyFrame()
     InitMenu();
 
     player = new wxPlayer(this, wxID_ANY, repo.video_path(),
-                          [this](cv::Mat mat, int display_frame) {
+                          [this](cv::Mat &mat, int display_frame) {
                               for (auto &[id, t]:repo.get()) {
                                   if (t.trajectories.count(display_frame)) {
                                       auto color =
@@ -66,7 +66,6 @@ MyFrame::MyFrame()
                                                 std::to_string(id), color);
                                   }
                               }
-                              return mat;
                           });
 
     auto sizer = new wxBoxSizer(wxHORIZONTAL);

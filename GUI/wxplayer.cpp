@@ -3,16 +3,16 @@
 
 wxPlayer::wxPlayer(wxWindow *parent, wxWindowID id,
                    const wxString &file,
-                   const std::function<cv::Mat(cv::Mat, int)> &post)
+                   const std::function<void(cv::Mat &, int)> &post)
         : wxWindow(parent, id), post(post) {
     if (!capture.open(file.ToStdString())) {
         throw;
     }
 
-    bitmap = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap,
-                                wxDefaultPosition,
-                                wxSize(capture.get(cv::CAP_PROP_FRAME_WIDTH),
-                                       capture.get(cv::CAP_PROP_FRAME_HEIGHT)));
+    mat = cv::Mat::zeros(capture.get(cv::CAP_PROP_FRAME_WIDTH), capture.get(cv::CAP_PROP_FRAME_HEIGHT), CV_8UC3);
+    bitmap = new wxGenericStaticBitmap(this, wxID_ANY, wxNullBitmap);
+    bitmap->Bind(wxEVT_SIZE, [this](wxSizeEvent &) { RescaleToBitmap(); });
+    bitmap->SetMaxClientSize(wxSize(capture.get(cv::CAP_PROP_FRAME_WIDTH), capture.get(cv::CAP_PROP_FRAME_HEIGHT)));
 
     timer = new wxTimer(this, ID_Timer);
     Bind(wxEVT_TIMER,
@@ -53,11 +53,8 @@ wxPlayer::wxPlayer(wxWindow *parent, wxWindowID id,
 }
 
 void wxPlayer::LoadNext() {
-    cv::Mat mat;
     if (capture.read(mat)) {
-        mat = post(mat, GetFrame());
-        cv::cvtColor(mat, mat, cv::COLOR_BGR2RGB);
-        bitmap->SetBitmap(wxBitmap(cvMat2wxImage(mat)));
+        RescaleToBitmap();
         progress->SetValue(GetFrame());
     }
 }
@@ -65,4 +62,13 @@ void wxPlayer::LoadNext() {
 void wxPlayer::Seek(int frame) {
     capture.set(cv::CAP_PROP_POS_FRAMES, frame);
     LoadNext();
+}
+
+void wxPlayer::RescaleToBitmap() {
+    cv::Mat resized;
+    auto size = bitmap->GetClientSize();
+    cv::resize(mat, resized, {size.GetWidth(), size.GetHeight()});
+    post(resized, GetFrame());
+    cv::cvtColor(resized, resized, cv::COLOR_BGR2RGB);
+    bitmap->SetBitmap(wxBitmap(cvMat2wxImage(resized)));
 }
