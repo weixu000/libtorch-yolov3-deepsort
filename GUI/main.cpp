@@ -61,7 +61,7 @@ MyFrame::MyFrame()
                                       auto color =
                                               hovered == -1 ? color_map(id) : hovered == id ? cv::Scalar(0, 0, 255)
                                                                                             : cv::Scalar(0, 0, 0);
-                                      draw_trajectories(mat, t.trajectories, color);
+                                      draw_trajectories(mat, t.trajectories, display_frame, color);
                                       draw_bbox(mat, t.trajectories.at(display_frame),
                                                 std::to_string(id), color);
                                   }

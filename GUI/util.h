@@ -81,17 +81,19 @@ namespace {
         }
     }
 
-    void draw_trajectories(cv::Mat &img, const std::map<int, cv::Rect2f> &traj,
+    void draw_trajectories(cv::Mat &img, const std::map<int, cv::Rect2f> &traj, int curent,
                            const cv::Scalar &color = {0, 0, 0}) {
-        if (traj.size() < 2) return;
+        auto it = traj.begin();
+        for (; it != traj.end() && it->first < curent - 20; ++it) {}
+        if (it == traj.end()) return;
 
-        auto cur = traj.begin()->second;
+        auto cur = it->second;
         auto pt1 = cur.br();
         pt1.x -= cur.width / 2;
         pt1.x *= img.cols;
         pt1.y *= img.rows;
 
-        for (auto it = ++traj.begin(); it != traj.end(); ++it) {
+        for (; it != traj.end() && it->first <= curent; ++it) {
             cur = it->second;
             auto pt2 = cur.br();
             pt2.x -= cur.width / 2;
