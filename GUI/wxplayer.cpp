@@ -46,7 +46,7 @@ wxPlayer::wxPlayer(wxWindow *parent, wxWindowID id,
     }, ID_Progress);
 
     auto sizer = new wxBoxSizer(wxVERTICAL);
-    sizer->Add(bitmap, 1, wxEXPAND | wxALL);
+    sizer->Add(bitmap, 1, wxEXPAND | wxALL | wxALIGN_CENTER);
     sizer->Add(bar, 0, wxEXPAND | wxALL);
 
     SetSizerAndFit(sizer);

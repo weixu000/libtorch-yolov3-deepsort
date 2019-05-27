@@ -90,11 +90,11 @@ void MyFrame::InitMenu() {
     SetMenuBar(menuBar);
 
     CreateStatusBar();
-    SetStatusText("Welcome to wxWidgets!");
+    SetStatusText("Welcome to my demo!");
 
     Bind(wxEVT_MENU,
          [this](wxCommandEvent &) {
-             wxLogMessage("Hello world from wxWidgets!");
+             wxLogMessage("Hello world!");
          }, ID_Hello);
     Bind(wxEVT_MENU,
          [this](wxCommandEvent &) {
