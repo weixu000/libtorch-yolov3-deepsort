@@ -1,5 +1,5 @@
 #include <iostream>
-#include <strstream>
+#include <sstream>
 #include <opencv2/opencv.hpp>
 #include <chrono>
 
@@ -10,12 +10,14 @@
 using namespace std;
 
 int main(int argc, const char *argv[]) {
-    if (argc != 2) {
-        cerr << "usage: processing <input path>" << endl;
+    if (argc < 2 || argc > 3) {
+        cerr << "usage: processing <input path> [<scale factor>]" << endl;
         return -1;
     }
+    auto input_path = string(argv[1]);
+    auto scale_factor = argc == 3 ? stoi(argv[2]) : 1;
 
-    cv::VideoCapture cap(argv[1]);
+    cv::VideoCapture cap(input_path);
     if (!cap.isOpened()) {
         cerr << "Cannot open cv::VideoCapture" << endl;
         return -2;
@@ -25,7 +27,7 @@ int main(int argc, const char *argv[]) {
     array<int64_t, 2> inp_dim;
     for (size_t i = 0; i < 2; ++i) {
         auto factor = 1 << 5;
-        inp_dim[i] = (orig_dim[i] / 3 / factor + 1) * factor;
+        inp_dim[i] = (orig_dim[i] / scale_factor / factor + 1) * factor;
     }
     Detector detector(inp_dim);
     DeepSORT tracker(orig_dim);
@@ -33,6 +35,7 @@ int main(int argc, const char *argv[]) {
     TargetStorage repo(orig_dim, static_cast<int>(cap.get(cv::CAP_PROP_FPS)));
 
     auto image = cv::Mat();
+    cv::namedWindow("Output", cv::WINDOW_NORMAL | cv::WINDOW_KEEPRATIO);
     while (cap.read(image)) {
         auto frame_processed = static_cast<uint32_t>(cap.get(cv::CAP_PROP_POS_FRAMES)) - 1;
 
