@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
-project(libtorch-yolov3)
+cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
+project(libtorch-yolov3-deepsot)
 
 find_package(OpenCV REQUIRED)
 find_package(Torch REQUIRED)
@@ -7,7 +7,7 @@ find_package(Torch REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if (CMAKE_BUILD_TYPE STREQUAL Debug)
+if (CMAKE_BUILD_TYPE STREQUAL Debug AND NOT MSVC)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
 endif ()

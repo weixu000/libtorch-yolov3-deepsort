@@ -52,9 +52,19 @@ namespace {
 const float Detector::NMS_threshold = 0.4f;
 const float Detector::confidence_threshold = 0.1f;
 
-Detector::Detector(const std::array<int64_t, 2> &_inp_dim)
-        : net(std::make_unique<Darknet>("models/yolov3.cfg")) {
-    net->load_weights("weights/yolov3.weights"); // TODO: do not hard-code path
+Detector::Detector(const std::array<int64_t, 2> &_inp_dim, YOLOType type) {
+    switch (type) {
+    case YOLOType::YOLOv3:
+        net = std::make_unique<Darknet>("models/yolov3.cfg");
+        net->load_weights("weights/yolov3.weights");
+        break;
+    case YOLOType::YOLOv3_TINY:
+        net = std::make_unique<Darknet>("models/yolov3-tiny.cfg");
+        net->load_weights("weights/yolov3-tiny.weights");
+        break;
+    default:
+        break;
+    }
     net->to(torch::kCUDA);
     net->eval();
 

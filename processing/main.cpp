@@ -11,16 +11,14 @@ using namespace std;
 
 int main(int argc, const char *argv[]) {
     if (argc < 2 || argc > 3) {
-        cerr << "usage: processing <input path> [<scale factor>]" << endl;
-        return -1;
+        throw runtime_error("usage: processing <input path> [<scale factor>]");
     }
     auto input_path = string(argv[1]);
     auto scale_factor = argc == 3 ? stoi(argv[2]) : 1;
 
     cv::VideoCapture cap(input_path);
     if (!cap.isOpened()) {
-        cerr << "Cannot open cv::VideoCapture" << endl;
-        return -2;
+        throw runtime_error("Cannot open cv::VideoCapture");
     }
 
     array<int64_t, 2> orig_dim{int64_t(cap.get(cv::CAP_PROP_FRAME_HEIGHT)), int64_t(cap.get(cv::CAP_PROP_FRAME_WIDTH))};

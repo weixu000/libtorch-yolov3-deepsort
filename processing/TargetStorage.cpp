@@ -15,8 +15,7 @@ TargetStorage::TargetStorage(const array<int64_t, 2> &orig_dim, int video_FPS) {
                 cv::VideoWriter::fourcc('a', 'v', 'c', '1'),
                 video_FPS, cv::Size(orig_dim[1], orig_dim[0]));
     if (!writer.isOpened()) {
-        cerr << "Cannot open cv::VideoWriter" << endl;
-        exit(-3);
+        throw std::runtime_error("Cannot open cv::VideoWriter");
     }
 }
 

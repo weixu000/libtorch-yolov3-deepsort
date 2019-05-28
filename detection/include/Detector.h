@@ -5,9 +5,14 @@
 #include <array>
 #include <opencv2/opencv.hpp>
 
+enum class YOLOType {
+    YOLOv3,
+    YOLOv3_TINY
+};
+
 class Detector {
 public:
-    explicit Detector(const std::array<int64_t, 2> &_inp_dim);
+    explicit Detector(const std::array<int64_t, 2> &_inp_dim, YOLOType type = YOLOType::YOLOv3);
 
     ~Detector();
 

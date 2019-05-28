@@ -58,7 +58,7 @@ struct DetectionLayerImpl : torch::nn::Module {
             : anchors(register_buffer("anchors",
                                       torch::from_blob((void *) _anchors.data(),
                                                        {static_cast<int64_t>(_anchors.size() / 2), 2}).clone())),
-              grid{torch::empty({0}), torch::empty({0})} {}
+              grid({torch::empty({0}), torch::empty({0})}) {}
 
     torch::Tensor forward(torch::Tensor prediction, torch::IntArrayRef inp_dim) {
         auto grid_size = prediction.sizes().slice(2);

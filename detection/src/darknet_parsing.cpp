@@ -65,6 +65,7 @@ int split(const string &str, vector<int> &ret_, string sep) {
     for (int i = 0; i < tmp.size(); i++) {
         ret_.push_back(stoi(tmp[i]));
     }
+    return ret_.size();
 }
 
 int get_int_from_cfg(map<string, string> block, string key, int default_value) {
@@ -143,6 +144,10 @@ Blocks load_cfg(const string &cfg_file) {
 
 void load_weights(const string &weight_file, const Blocks &blocks, vector<torch::nn::Sequential> &module_list) {
     ifstream fs(weight_file, ios_base::binary);
+    if (!fs) {
+        throw std::runtime_error("No weight file for Darknet!");
+    }
+
     fs.seekg(sizeof(int32_t) * 5, ios_base::beg);
 
     for (size_t i = 0; i < module_list.size(); i++) {
