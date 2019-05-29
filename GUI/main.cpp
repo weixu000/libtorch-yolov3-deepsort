@@ -119,7 +119,7 @@ wxThumbnailCtrl *MyFrame::InitThumbnails() {
             cv::resize(s, s, cv::Size(50, 50));
         }
         auto item = new wxThumbnailItem(wxString::Format("%d", id));
-        item->GetBitmap() = cvMat2wxImage(t.snapshots.begin()->second);
+        item->SetBitmap(cvMat2wxImage(t.snapshots.begin()->second));
         thumbnails->Append(item);
         dialog.Update(50 + 50 * ++i_target / repo.get().size(), "Loading resources...");
     }
@@ -131,7 +131,7 @@ wxThumbnailCtrl *MyFrame::InitThumbnails() {
                          if (thumbnails->GetMouseHoverItem() != wxNOT_FOUND) {
                              auto &item = *thumbnails->GetItem(thumbnails->GetMouseHoverItem());
                              auto &snapshots = repo.get().at(wxAtoi(item.GetLabel())).snapshots;
-                             item.GetBitmap() = cvMat2wxImage(it->second);
+                             item.SetBitmap(cvMat2wxImage(it->second));
                              item.Refresh(thumbnails, thumbnails->GetMouseHoverItem());
                              if (++it == snapshots.end()) {
                                  it = snapshots.begin();
@@ -143,8 +143,8 @@ wxThumbnailCtrl *MyFrame::InitThumbnails() {
                      [this, thumbnails](wxThumbnailEvent &event) {
                          if (event.GetIndex() != wxNOT_FOUND) {
                              auto &item = *thumbnails->GetItem(event.GetIndex());
-                             item.GetBitmap() = cvMat2wxImage(
-                                     repo.get().at(wxAtoi(item.GetLabel())).snapshots.begin()->second);
+                             item.SetBitmap(cvMat2wxImage(
+                                 repo.get().at(wxAtoi(item.GetLabel())).snapshots.begin()->second));
                          }
 
                          if (thumbnails->GetMouseHoverItem() != wxNOT_FOUND) {

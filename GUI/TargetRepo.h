@@ -23,8 +23,6 @@ public:
 
 private:
     container_t targets;
-
-    std::map<int, std::ifstream> trks_files;
 };
 
 #endif //TARGET_H

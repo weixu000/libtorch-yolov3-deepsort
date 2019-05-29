@@ -80,7 +80,8 @@ public:
     /// Draw the item
     virtual bool Draw(wxDC &dc, wxThumbnailCtrl *ctrl, const wxRect &rect, int style, int index);
 
-    wxBitmap &GetBitmap() { return m_bitmap; }
+    wxBitmap const &GetBitmap() { return m_bitmap; }
+    void SetBitmap(const wxBitmap &x) { m_bitmap = x ; }
 
 private:
     wxBitmap m_bitmap;

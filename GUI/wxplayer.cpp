@@ -6,15 +6,15 @@ wxPlayer::wxPlayer(wxWindow *parent, wxWindowID id,
                    const std::function<void(cv::Mat &, int)> &post)
         : wxWindow(parent, id), post(post) {
     if (!capture.open(file.ToStdString())) {
-        throw;
+        throw std::runtime_error("Cannot open video!");
     }
 
     auto video_size = wxSize(capture.get(cv::CAP_PROP_FRAME_WIDTH), capture.get(cv::CAP_PROP_FRAME_HEIGHT));
     mat = cv::Mat::zeros(video_size.GetWidth(), video_size.GetHeight(), CV_8UC3);
     bitmap = new wxGenericStaticBitmap(this, wxID_ANY, wxNullBitmap);
     bitmap->Bind(wxEVT_SIZE, [this](wxSizeEvent &) { RescaleToBitmap(); });
-    bitmap->SetMinClientSize(video_size / 5);
-    bitmap->SetMaxClientSize(video_size);
+    bitmap->Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {});
+    bitmap->SetMinClientSize(video_size / 3);
 
     timer = new wxTimer(this, ID_Timer);
     Bind(wxEVT_TIMER,
@@ -46,7 +46,7 @@ wxPlayer::wxPlayer(wxWindow *parent, wxWindowID id,
     }, ID_Progress);
 
     auto sizer = new wxBoxSizer(wxVERTICAL);
-    sizer->Add(bitmap, 1, wxEXPAND | wxALL | wxALIGN_CENTER);
+    sizer->Add(bitmap, 1, wxEXPAND | wxALL);
     sizer->Add(bar, 0, wxEXPAND | wxALL);
 
     SetSizerAndFit(sizer);
