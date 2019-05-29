@@ -32,19 +32,19 @@ void TargetStorage::update(const vector<Track> &trks, int frame, const cv::Mat &
         }
     }
 
-    record();
+    record(20);
 
     writer.write(image);
 }
 
-void TargetStorage::record() {
+void TargetStorage::record(int remain) {
     for (auto&[id, t]:targets) {
         auto dir_path = fs::path(OUTPUT_DIR) / TARGETS_DIR_NAME / to_string(id);
         fs::create_directories(dir_path);
 
         ofstream fp(dir_path / TRAJ_TXT_NAME, ios::app);
         fp << right << fixed << setprecision(3);
-        while (t.trajectories.size() > 20) {
+        while (t.trajectories.size() > remain) {
             auto &[frame, box] = *t.trajectories.begin();
             fp << setw(6) << frame
                << setw(6) << box.x
@@ -57,9 +57,15 @@ void TargetStorage::record() {
 
         dir_path /= SNAPSHOTS_DIR_NAME;
         fs::create_directories(dir_path);
-        for (auto &[frame, ss]:t.snapshots) {
-            cv::imwrite((dir_path / (to_string(frame) + ".jpg")).string(), ss);
+        while (!t.snapshots.empty()) {
+            auto &[frame, ss] = *t.snapshots.begin();
+            if (t.trajectories.empty() || frame < t.trajectories.begin()->first) {
+                cv::imwrite((dir_path / (to_string(frame) + ".jpg")).string(), ss);
+                t.snapshots.erase(t.snapshots.begin());
+            }
+            else {
+                break;
+            }
         }
-        t.snapshots.clear();
     }
 }

@@ -64,7 +64,7 @@ int main(int argc, const char *argv[]) {
             case 'q':
                 return 0;
             case ' ':
-                cv::imwrite(to_string(frame_processed) + ".png", image);
+                cv::imwrite(to_string(frame_processed) + ".jpg", image);
                 break;
             default:
                 break;

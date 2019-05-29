@@ -13,6 +13,8 @@ class TargetStorage {
 public:
     explicit TargetStorage(const std::array<int64_t, 2> &orig_dim, int video_FPS);
 
+    virtual ~TargetStorage() { record(0); }
+
     void update(const std::vector<Track> &trks,
                 int frame, const cv::Mat &image);
 
@@ -25,7 +27,7 @@ public:
     const std::map<int, Target> &get() const { return targets; }
 
 private:
-    void record();
+    void record(int remain);
 
     static constexpr float padding = 0.1f;
 
