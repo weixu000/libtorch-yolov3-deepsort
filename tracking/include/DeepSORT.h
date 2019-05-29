@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 
+#include "tracking_export.h"
 #include "Track.h"
 
 class Extractor;
@@ -15,7 +16,7 @@ class TrackerManager;
 template<typename T>
 class FeatureMetric;
 
-class DeepSORT {
+class TRACKING_EXPORT DeepSORT {
 public:
     explicit DeepSORT(const std::array<int64_t, 2> &dim);
 

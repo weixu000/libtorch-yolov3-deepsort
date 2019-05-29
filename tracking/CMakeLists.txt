@@ -1,6 +1,10 @@
 aux_source_directory(src TRACKING_SRCS)
 add_library(tracking SHARED ${TRACKING_SRCS})
-target_link_libraries(tracking PUBLIC "${OpenCV_LIBS}" PRIVATE "${TORCH_LIBRARIES}")
+
+include(GenerateExportHeader)
+GENERATE_EXPORT_HEADER(tracking)
+
+target_link_libraries(tracking PUBLIC ${OpenCV_LIBS} PRIVATE "${TORCH_LIBRARIES}")
 target_include_directories(tracking
-        PUBLIC include
+        PUBLIC include ${CMAKE_CURRENT_BINARY_DIR}
         PRIVATE src)

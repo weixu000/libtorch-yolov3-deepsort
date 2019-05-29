@@ -5,13 +5,13 @@
 #include <memory>
 #include <vector>
 
+#include "tracking_export.h"
 #include "Track.h"
 
 template<typename T>
 class TrackerManager;
 
-
-class SORT {
+class TRACKING_EXPORT  SORT {
 public:
     explicit SORT(const std::array<int64_t, 2> &dim);
 
