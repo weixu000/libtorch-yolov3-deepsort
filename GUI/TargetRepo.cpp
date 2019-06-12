@@ -28,7 +28,7 @@ void TargetRepo::load(const std::function<void(int)> &show_progress) {
             }
         }
 
-        auto traj_txt = ifstream(trk_dir / TRAJ_TXT_NAME);
+        auto traj_txt = ifstream((trk_dir / TRAJ_TXT_NAME).string());
         int frame;
         cv::Rect2f box;
         while (traj_txt >> frame >> box.x >> box.y >> box.width >> box.height) {
