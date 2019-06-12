@@ -23,7 +23,7 @@ wxIMPLEMENT_APP(MyApp);
 
 class MyFrame : public wxFrame {
 public:
-    MyFrame();
+    MyFrame(const wxString &dir);
 
 private:
     void InitMenu();
@@ -45,13 +45,22 @@ private:
 
 
 bool MyApp::OnInit() {
-    auto frame = new MyFrame;
-    frame->Show(true);
-    return true;
+    auto dialog = wxDirDialog(nullptr,
+                              "Select result directory",
+                              "",
+                              wxDD_DIR_MUST_EXIST);
+    if (dialog.ShowModal() == wxID_OK) {
+        auto frame = new MyFrame(dialog.GetPath());
+        frame->Show(true);
+        return true;
+    } else {
+        return false;
+    }
 }
 
-MyFrame::MyFrame()
-        : wxFrame(nullptr, wxID_ANY, "YOLO+DeepSORT+wxWidgets") {
+MyFrame::MyFrame(const wxString &dir)
+        : wxFrame(nullptr, wxID_ANY, "YOLO+DeepSORT+wxWidgets"),
+          repo(dir.ToStdString()) {
     InitMenu();
 
     player = new wxPlayer(this, wxID_ANY, repo.video_path(),
@@ -144,7 +153,7 @@ wxThumbnailCtrl *MyFrame::InitThumbnails() {
                          if (event.GetIndex() != wxNOT_FOUND) {
                              auto &item = *thumbnails->GetItem(event.GetIndex());
                              item.SetBitmap(cvMat2wxImage(
-                                 repo.get().at(wxAtoi(item.GetLabel())).snapshots.begin()->second));
+                                     repo.get().at(wxAtoi(item.GetLabel())).snapshots.begin()->second));
                          }
 
                          if (thumbnails->GetMouseHoverItem() != wxNOT_FOUND) {

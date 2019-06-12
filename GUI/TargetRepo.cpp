@@ -9,12 +9,12 @@ namespace fs = std::experimental::filesystem;
 
 void TargetRepo::load(const std::function<void(int)> &show_progress) {
     int num_targets = 0;
-    for (auto &trk_dir: fs::directory_iterator(fs::path(OUTPUT_DIR) / TARGETS_DIR_NAME)) {
+    for (auto &trk_dir: fs::directory_iterator(fs::path(out_dir) / TARGETS_DIR_NAME)) {
         ++num_targets;
     }
 
     int i_target = 0;
-    for (auto &trk_dir: fs::directory_iterator(fs::path(OUTPUT_DIR) / TARGETS_DIR_NAME)) {
+    for (auto &trk_dir: fs::directory_iterator(fs::path(out_dir) / TARGETS_DIR_NAME)) {
         auto id = stoi(trk_dir.path().filename());
         targets.emplace(id, Target());
         auto &t = targets[id];
@@ -41,5 +41,5 @@ void TargetRepo::load(const std::function<void(int)> &show_progress) {
 }
 
 std::string TargetRepo::video_path() {
-    return (fs::path(OUTPUT_DIR) / VIDEO_NAME).string();
+    return (fs::path(out_dir) / VIDEO_NAME).string();
 }

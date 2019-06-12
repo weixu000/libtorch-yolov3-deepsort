@@ -13,6 +13,8 @@ struct Target {
 
 class TargetRepo {
 public:
+    TargetRepo(const std::string &dir) : out_dir(dir) {}
+
     using container_t = std::map<int, Target>;
 
     container_t &get() { return targets; }
@@ -23,6 +25,8 @@ public:
 
 private:
     container_t targets;
+
+    const std::string out_dir;
 };
 
 #endif //TARGET_H
