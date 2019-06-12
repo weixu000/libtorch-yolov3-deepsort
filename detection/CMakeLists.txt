@@ -1,3 +1,6 @@
+find_package(OpenCV REQUIRED)
+find_package(Torch REQUIRED)
+
 aux_source_directory(src DETECTION_SRCS)
 add_library(detection SHARED ${DETECTION_SRCS})
 

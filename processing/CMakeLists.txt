@@ -1,3 +1,5 @@
+find_package(OpenCV REQUIRED)
+
 aux_source_directory(. PROCESSING_SRCS)
 
 add_executable(processing ${PROCESSING_SRCS})

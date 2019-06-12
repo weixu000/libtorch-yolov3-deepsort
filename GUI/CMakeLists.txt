@@ -1,4 +1,6 @@
+find_package(OpenCV REQUIRED)
 find_package(wxWidgets COMPONENTS core base REQUIRED)
+
 include(${wxWidgets_USE_FILE})
 
 aux_source_directory(. GUI_SRCS)
