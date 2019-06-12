@@ -26,8 +26,6 @@ public:
     MyFrame(const wxString &dir);
 
 private:
-    void InitMenu();
-
     wxThumbnailCtrl *InitThumbnails();
 
     wxPlayer *player;
@@ -61,8 +59,6 @@ bool MyApp::OnInit() {
 MyFrame::MyFrame(const wxString &dir)
         : wxFrame(nullptr, wxID_ANY, "YOLO+DeepSORT+wxWidgets"),
           repo(dir.ToStdString()) {
-    InitMenu();
-
     player = new wxPlayer(this, wxID_ANY, repo.video_path(),
                           [this](cv::Mat &mat, int display_frame) {
                               for (auto &[id, t]:repo.get()) {
@@ -81,39 +77,6 @@ MyFrame::MyFrame(const wxString &dir)
     sizer->Add(player, 3, wxEXPAND | wxALL);
     sizer->Add(InitThumbnails(), 1, wxEXPAND | wxALL);
     SetSizerAndFit(sizer);
-}
-
-void MyFrame::InitMenu() {
-    auto menuFile = new wxMenu;
-    menuFile->Append(ID_Hello, "&Hello...\tCtrl-H",
-                     "Help string shown in status bar for this menu item");
-    menuFile->AppendSeparator();
-    menuFile->Append(wxID_EXIT);
-
-    auto menuHelp = new wxMenu;
-    menuHelp->Append(wxID_ABOUT);
-
-    auto menuBar = new wxMenuBar;
-    menuBar->Append(menuFile, "&File");
-    menuBar->Append(menuHelp, "&Help");
-    SetMenuBar(menuBar);
-
-    CreateStatusBar();
-    SetStatusText("Welcome to my demo!");
-
-    Bind(wxEVT_MENU,
-         [this](wxCommandEvent &) {
-             wxLogMessage("Hello world!");
-         }, ID_Hello);
-    Bind(wxEVT_MENU,
-         [this](wxCommandEvent &) {
-             wxMessageBox("This is a wxWidgets Hello World example",
-                          "About Hello World", wxOK | wxICON_INFORMATION);
-         }, wxID_ABOUT);
-    Bind(wxEVT_MENU,
-         [this](wxCommandEvent &) {
-             Close(true);
-         }, wxID_EXIT);
 }
 
 wxThumbnailCtrl *MyFrame::InitThumbnails() {
