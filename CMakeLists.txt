@@ -33,5 +33,5 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(detection)
 add_subdirectory(tracking)
-add_subdirectory(GUI)
 add_subdirectory(processing)
+add_subdirectory(GUI)
