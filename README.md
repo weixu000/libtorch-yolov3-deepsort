@@ -1,5 +1,8 @@
 # Overview
+*It is for my undergrad thesis in Tsinghua University.*
+
 There are four modules in the project:
+
 - Detection: YOLOv3
 - Tracking: SORT and DeepSORT
 - Processing: Run detection and tracking, then display and save the results (a compressed video, a few snapshots for each target)
@@ -46,6 +49,3 @@ LibTorch can be easily integrated with CMake, but there are a lot of strange thi
 
 On Ubuntu 16.04, I use `apt install` to install the others. Everything is fine.
 On Windows 10 + Visual Studio 2017, I use the latest stable version of the others from their official websites.
-
-# TODO
-Still under construction...
