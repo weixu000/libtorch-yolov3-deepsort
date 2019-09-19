@@ -49,3 +49,14 @@ LibTorch can be easily integrated with CMake, but there are a lot of strange thi
 
 On Ubuntu 16.04, I use `apt install` to install the others. Everything is fine.
 On Windows 10 + Visual Studio 2017, I use the latest stable version of the others from their official websites.
+
+# Snapshots
+Here are some intermediate output from detection and tracking module:
+![Detection](https://github.com/weixu000/libtorch-yolov3-deepsort/blob/master/snapshots/detection.png)
+![Tracking](https://github.com/weixu000/libtorch-yolov3-deepsort/blob/master/snapshots/tracking.png)
+
+Here is the snapshot of processing module:
+![Processing](https://github.com/weixu000/libtorch-yolov3-deepsort/blob/master/snapshots/UI-online.png)
+
+Here is the snapshot of GUI module:
+![GUI](https://github.com/weixu000/libtorch-yolov3-deepsort/blob/master/snapshots/UI-offline.png)
